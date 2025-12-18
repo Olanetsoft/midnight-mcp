@@ -1,5 +1,5 @@
 {
-  "name": "@midnight/mcp-server",
+  "name": "@olanetsoft/midnight-mcp",
   "version": "0.0.1",
   "description": "Model Context Protocol Server for Midnight Blockchain Development",
   "type": "module",

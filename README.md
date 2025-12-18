@@ -15,7 +15,7 @@ A Model Context Protocol (MCP) Server for Midnight Blockchain Development. This 
 ### NPM Global Install
 
 ```bash
-npm install -g @midnight/mcp-server
+npm install -g @olanetsoft/midnight-mcp
 ```
 
 ### From Source
@@ -58,7 +58,7 @@ Add to `claude_desktop_config.json`:
   "mcpServers": {
     "midnight": {
       "command": "npx",
-      "args": ["-y", "@midnight/mcp-server"],
+      "args": ["-y", "@olanetsoft/midnight-mcp"],
       "env": {
         "GITHUB_TOKEN": "your-token",
         "OPENAI_API_KEY": "your-key"
@@ -111,25 +111,25 @@ npm run index
 
 ### Search Tools
 
-| Tool | Description |
-|------|-------------|
-| `midnight:search-compact` | Semantic search across Compact smart contract code and patterns |
-| `midnight:search-typescript` | Search TypeScript SDK code, types, and API implementations |
-| `midnight:search-docs` | Full-text search across official Midnight documentation |
+| Tool                         | Description                                                     |
+| ---------------------------- | --------------------------------------------------------------- |
+| `midnight:search-compact`    | Semantic search across Compact smart contract code and patterns |
+| `midnight:search-typescript` | Search TypeScript SDK code, types, and API implementations      |
+| `midnight:search-docs`       | Full-text search across official Midnight documentation         |
 
 ### Analysis Tools
 
-| Tool | Description |
-|------|-------------|
+| Tool                        | Description                                                             |
+| --------------------------- | ----------------------------------------------------------------------- |
 | `midnight:analyze-contract` | Analyze a Compact contract for structure, patterns, and security issues |
-| `midnight:explain-circuit` | Explain what a circuit does in plain language with ZK implications |
+| `midnight:explain-circuit`  | Explain what a circuit does in plain language with ZK implications      |
 
 ### Repository Tools
 
-| Tool | Description |
-|------|-------------|
-| `midnight:get-file` | Retrieve a specific file from Midnight repositories |
-| `midnight:list-examples` | List available example contracts and DApps |
+| Tool                          | Description                                          |
+| ----------------------------- | ---------------------------------------------------- |
+| `midnight:get-file`           | Retrieve a specific file from Midnight repositories  |
+| `midnight:list-examples`      | List available example contracts and DApps           |
 | `midnight:get-latest-updates` | Retrieve recent changes across Midnight repositories |
 
 ## Available Resources
@@ -161,13 +161,13 @@ npm run index
 
 ## Available Prompts
 
-| Prompt | Description |
-|--------|-------------|
-| `midnight:create-contract` | Guided prompt for creating new Compact contracts |
-| `midnight:review-contract` | Security and best practices review for existing contracts |
-| `midnight:explain-concept` | Educational prompt for explaining Midnight concepts |
-| `midnight:compare-approaches` | Compare different implementation approaches |
-| `midnight:debug-contract` | Help debug issues with a Compact contract |
+| Prompt                        | Description                                               |
+| ----------------------------- | --------------------------------------------------------- |
+| `midnight:create-contract`    | Guided prompt for creating new Compact contracts          |
+| `midnight:review-contract`    | Security and best practices review for existing contracts |
+| `midnight:explain-concept`    | Educational prompt for explaining Midnight concepts       |
+| `midnight:compare-approaches` | Compare different implementation approaches               |
+| `midnight:debug-contract`     | Help debug issues with a Compact contract                 |
 
 ## Development
 
