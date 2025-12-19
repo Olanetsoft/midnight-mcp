@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial release
-- **14 MCP Tools**:
+- **16 MCP Tools**:
   - `midnight-search-compact` - Semantic search for Compact code
   - `midnight-search-typescript` - Search TypeScript SDK code
   - `midnight-search-docs` - Full-text documentation search
@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `midnight-get-file-at-version` - Get file at specific version
   - `midnight-compare-syntax` - Compare files between versions
   - `midnight-get-latest-syntax` - Get latest syntax reference
+  - `midnight-health-check` - Server health status
+  - `midnight-get-status` - Rate limits and cache stats
 
 - **20 Documentation Resources**:
   - Compact language reference

@@ -1,19 +1,16 @@
-# Technical Implementation Details
+# Technical Details
 
-## MCP Protocol Implementation
+## Transport
 
-### Transport Layer
-
-The server uses **stdio transport** for communication with MCP clients:
+stdio transport, JSON-RPC 2.0:
 
 ```typescript
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-
 const transport = new StdioServerTransport();
 await server.connect(transport);
 ```
 
-Messages are JSON-RPC 2.0 formatted:
+Request format:
 
 ```json
 {
@@ -27,57 +24,11 @@ Messages are JSON-RPC 2.0 formatted:
 }
 ```
 
-### Capabilities Declaration
+## Compact Parser
+
+Regex-based extraction from `src/pipeline/parser.ts`:
 
 ```typescript
-{
-  capabilities: {
-    tools: {},                    // Supports tool listing & execution
-    resources: {
-      subscribe: true,            // Supports resource subscriptions
-      listChanged: true,          // Emits change notifications
-    },
-    prompts: {
-      listChanged: true,          // Emits prompt change notifications
-    },
-  },
-}
-```
-
-## Compact Language Parser
-
-### Supported Constructs
-
-The parser (`src/pipeline/parser.ts`) handles Midnight's Compact language:
-
-```
-┌─────────────────────────────────────────────────┐
-│                  Compact File                    │
-├─────────────────────────────────────────────────┤
-│  include statements                              │
-│  ├── include "std/stdlib.compact"               │
-│                                                  │
-│  ledger { }                                      │
-│  ├── state variables                            │
-│  ├── maps                                        │
-│  ├── counters                                    │
-│                                                  │
-│  circuit function_name(params): return { }      │
-│  ├── public circuits                            │
-│  ├── ZK proof generation                        │
-│                                                  │
-│  witness function_name(params): return { }      │
-│  ├── private computation                        │
-│  ├── Off-chain execution                        │
-│                                                  │
-│  export { symbols }                              │
-└─────────────────────────────────────────────────┘
-```
-
-### Parsing Strategy
-
-```typescript
-// Regex-based extraction with position tracking
 const ledgerRegex = /ledger\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/gs;
 const circuitRegex =
   /(?:export\s+)?(circuit)\s+(\w+)\s*\(([^)]*)\)\s*(?::\s*(\w+))?\s*\{/g;
@@ -85,16 +36,23 @@ const witnessRegex =
   /(?:export\s+)?(witness)\s+(\w+)\s*\(([^)]*)\)\s*(?::\s*(\w+))?\s*\{/g;
 ```
 
-### Extracted Metadata
+Extracts:
+
+- `ledger { }` blocks with fields
+- `circuit` and `witness` functions with params/return types
+- `export` declarations
+- `include` statements
+
+Output structure:
 
 ```typescript
 interface ParsedFile {
   path: string;
   language: "compact" | "typescript" | "markdown";
   content: string;
-  codeUnits: CodeUnit[]; // Functions, circuits, witnesses
-  imports: string[]; // Include statements
-  exports: string[]; // Exported symbols
+  codeUnits: CodeUnit[];
+  imports: string[];
+  exports: string[];
   metadata: {
     hasLedger: boolean;
     hasCircuits: boolean;
@@ -104,233 +62,97 @@ interface ParsedFile {
 }
 ```
 
-## Vector Embedding Pipeline
+## Embeddings (Local Mode)
 
-### Embedding Generation
+Model: `text-embedding-3-small` (1536 dimensions)
 
-Using OpenAI's `text-embedding-3-small` model:
+Chunking strategy:
+
+1. **Code units** (preferred): each function/circuit/witness = one chunk
+2. **File chunks** (fallback): 2000 chars, 5-line overlap
 
 ```typescript
 const response = await openai.embeddings.create({
   model: "text-embedding-3-small",
   input: text,
 });
-// Returns 1536-dimensional vector
 ```
 
-### Chunking Strategy
+## ChromaDB (Local Mode)
 
-Code is intelligently chunked for optimal embedding:
+Collection: `midnight-code`
 
-1. **Code Unit Chunking** (preferred)
-   - Each function/circuit/witness = one chunk
-   - Preserves semantic boundaries
-2. **File Chunking** (fallback)
-   - 2000 character chunks
-   - 5-line overlap between chunks
-   - Used when no code units extracted
+Document schema:
 
 ```typescript
-function createChunks(file: ParsedFile, repository: string) {
-  const chunks = [];
-
-  // Prefer code units
-  for (const unit of file.codeUnits) {
-    chunks.push({
-      text: unit.code,
-      metadata: {
-        /* ... */
-      },
-    });
-  }
-
-  // Fallback to file chunks
-  if (file.codeUnits.length === 0) {
-    // Sliding window chunking
-  }
-
-  return chunks;
+{
+  ids: string[];
+  embeddings: number[][];
+  metadatas: Array<{
+    repository: string;
+    filePath: string;
+    language: string;
+    startLine: number;
+    endLine: number;
+    codeType: string;
+    codeName: string;
+    isPublic: boolean;
+  }>;
+  documents: string[];
 }
 ```
 
-## ChromaDB Integration
-
-### Collection Schema
-
-```typescript
-const collection = await client.getOrCreateCollection({
-  name: "midnight-code",
-  metadata: {
-    description: "Midnight blockchain code and documentation",
-  },
-});
-```
-
-### Document Storage
-
-```typescript
-await collection.add({
-  ids: ["doc-1", "doc-2"],
-  embeddings: [[0.1, 0.2, ...], [0.3, 0.4, ...]],
-  metadatas: [{
-    repository: "midnight-examples",
-    filePath: "counter/contract.compact",
-    language: "compact",
-    startLine: 1,
-    endLine: 25,
-    codeType: "circuit",
-    codeName: "increment",
-    isPublic: true,
-  }],
-  documents: ["circuit increment() { ... }"],
-});
-```
-
-### Similarity Search
+Query:
 
 ```typescript
 const results = await collection.query({
   queryEmbeddings: [queryVector],
   nResults: 10,
-  where: { language: "compact" }, // Optional filter
+  where: { language: "compact" },
   include: ["documents", "metadatas", "distances"],
 });
 ```
 
-## Contract Analysis Engine
-
-### Analysis Pipeline
-
-```
-Input Code
-    │
-    ▼
-┌───────────────┐
-│   Parsing     │──▶ AST-like structure
-└───────────────┘
-    │
-    ▼
-┌───────────────┐
-│  Structure    │──▶ Ledger, circuits, witnesses
-│  Extraction   │
-└───────────────┘
-    │
-    ▼
-┌───────────────┐
-│   Pattern     │──▶ Access control, state mgmt
-│  Detection    │
-└───────────────┘
-    │
-    ▼
-┌───────────────┐
-│  Security     │──▶ Potential issues
-│   Checks      │
-└───────────────┘
-    │
-    ▼
-Output Report
-```
-
-### Detected Patterns
-
-| Pattern            | Detection Method                  |
-| ------------------ | --------------------------------- |
-| Access Control     | `authorized()`, permission checks |
-| State Management   | Ledger field analysis             |
-| Privacy Preserving | Witness vs circuit ratio          |
-| Token Standards    | Transfer/mint/burn signatures     |
-
-### Security Checks
-
-| Check                | What it detects                      |
-| -------------------- | ------------------------------------ |
-| Unprotected circuits | Public circuits without auth         |
-| State leakage        | Shielded data in public returns      |
-| Missing witnesses    | Circuits without private computation |
-| Reentrancy patterns  | Recursive calls in circuits          |
-
 ## GitHub Integration
 
-### Rate Limiting
+Rate limits:
+
+- With token: 5000 req/hr
+- Without token: 60 req/hr
 
 ```typescript
-// With token: 5000 requests/hour
-// Without token: 60 requests/hour
+const octokit = new Octokit({ auth: config.githubToken });
 
-const octokit = new Octokit({
-  auth: config.githubToken, // Optional
-});
+const response = await octokit.repos.getContent({ owner, repo, path, ref });
+const content = Buffer.from(response.data.content, "base64").toString("utf-8");
 ```
 
-### Repository Configuration
+## Contract Analysis
 
-```typescript
-const DEFAULT_REPOSITORIES: RepositoryConfig[] = [
-  {
-    owner: "midnightntwrk",
-    name: "midnight-examples",
-    branch: "main",
-    paths: ["contracts/", "examples/"],
-    types: ["compact", "typescript"],
-  },
-  {
-    owner: "midnightntwrk",
-    name: "compact-compiler",
-    branch: "main",
-    paths: ["stdlib/", "src/"],
-    types: ["compact"],
-  },
-];
+Pipeline:
+
+```
+Code → Parse → Extract structure → Detect patterns → Security checks → Report
 ```
 
-### File Fetching
+Pattern detection:
+| Pattern | Detection |
+| ------------------ | --------------------------------- |
+| Access Control | `authorized()`, permission checks |
+| State Management | Ledger field analysis |
+| Privacy Preserving | Witness vs circuit ratio |
+| Token Standards | transfer/mint/burn signatures |
 
-```typescript
-async function getFileContent(
-  owner: string,
-  repo: string,
-  path: string,
-  ref = "main"
-): Promise<string> {
-  const response = await octokit.repos.getContent({
-    owner,
-    repo,
-    path,
-    ref,
-  });
+Security checks:
+| Check | Detects |
+| -------------------- | ---------------------------- |
+| Unprotected circuits | Public circuits without auth |
+| State leakage | Shielded data in public returns |
+| Missing witnesses | Circuits without private computation |
 
-  // Decode base64 content
-  return Buffer.from(response.data.content, "base64").toString("utf-8");
-}
-```
+## Logging
 
-## Logging System
-
-### Log Levels
-
-```typescript
-type LogLevel = "debug" | "info" | "warn" | "error";
-
-// Set via LOG_LEVEL environment variable
-// Default: "info"
-```
-
-### Structured Logging
-
-```typescript
-logger.info("Tool called", {
-  tool: "midnight-analyze-contract",
-  inputSize: code.length,
-  timestamp: new Date().toISOString(),
-});
-
-// Output:
-// [INFO] Tool called {"tool":"midnight-analyze-contract","inputSize":1234,...}
-```
-
-### Log Output
-
-Logs go to **stderr** to avoid interfering with MCP's stdio communication:
+Logs to stderr (avoids stdio interference):
 
 ```typescript
 console.error(
@@ -343,92 +165,24 @@ console.error(
 );
 ```
 
-## Testing Strategy
+Levels: `debug`, `info`, `warn`, `error`
 
-### Unit Tests
+Set via `LOG_LEVEL` env var.
 
-Using Vitest for fast, modern testing:
+## Environment Variables
 
-```typescript
-// tests/analyze.test.ts
-describe("Contract Analysis", () => {
-  it("should detect ledger block", () => {
-    const code = `ledger { counter: Counter }`;
-    const result = analyzeContract(code);
-    expect(result.structure.hasLedger).toBe(true);
-  });
-});
-```
+| Variable         | Required | Default                 | Description         |
+| ---------------- | -------- | ----------------------- | ------------------- |
+| `GITHUB_TOKEN`   | No       | -                       | GitHub PAT          |
+| `OPENAI_API_KEY` | No       | -                       | For local mode      |
+| `CHROMA_URL`     | No       | `http://localhost:8000` | ChromaDB endpoint   |
+| `MIDNIGHT_LOCAL` | No       | `false`                 | Enable local mode   |
+| `HOSTED_API_URL` | No       | (production URL)        | Override hosted API |
+| `LOG_LEVEL`      | No       | `info`                  | Logging verbosity   |
 
-### Test Coverage
+## Build
 
-| Module    | Coverage |
-| --------- | -------- |
-| Parser    | ~85%     |
-| Analyze   | ~90%     |
-| Resources | ~75%     |
-| Prompts   | ~80%     |
-
-### Running Tests
-
-```bash
-npm test              # Run all tests
-npm run test:coverage # With coverage report
-```
-
-## Performance Considerations
-
-### Embedding Caching
-
-Embeddings are cached in ChromaDB to avoid regeneration:
-
-```typescript
-// Check if document already indexed
-const existing = await collection.get({
-  ids: [documentId],
-});
-
-if (existing.ids.length > 0) {
-  // Skip embedding generation
-  return;
-}
-```
-
-### Batch Processing
-
-Documents are processed in batches during indexing:
-
-```typescript
-const BATCH_SIZE = 100;
-
-for (let i = 0; i < documents.length; i += BATCH_SIZE) {
-  const batch = documents.slice(i, i + BATCH_SIZE);
-  await collection.add(/* batch */);
-}
-```
-
-### Memory Management
-
-- Large files are streamed, not loaded entirely
-- Parsed ASTs are not retained after extraction
-- Vector store handles memory for embeddings
-
-## Environment Variables Reference
-
-| Variable          | Required | Default                  | Description                   |
-| ----------------- | -------- | ------------------------ | ----------------------------- |
-| `GITHUB_TOKEN`    | No       | -                        | GitHub PAT for API access     |
-| `OPENAI_API_KEY`  | No       | -                        | OpenAI API key for embeddings |
-| `CHROMA_URL`      | No       | `http://localhost:8000`  | ChromaDB endpoint             |
-| `EMBEDDING_MODEL` | No       | `text-embedding-3-small` | OpenAI model                  |
-| `LOG_LEVEL`       | No       | `info`                   | Logging verbosity             |
-| `SYNC_INTERVAL`   | No       | `900000`                 | Index refresh (ms)            |
-| `DATA_DIR`        | No       | `./data`                 | Data storage path             |
-| `CACHE_DIR`       | No       | `./cache`                | Cache storage path            |
-
-## Build & Distribution
-
-### TypeScript Configuration
+TypeScript config:
 
 ```json
 {
@@ -442,25 +196,21 @@ for (let i = 0; i < documents.length; i += BATCH_SIZE) {
 }
 ```
 
-### NPM Package
+NPM package:
 
 ```json
 {
   "name": "midnight-mcp",
-  "bin": {
-    "midnight-mcp": "./dist/index.js"
-  },
+  "bin": { "midnight-mcp": "./dist/index.js" },
   "type": "module"
 }
 ```
 
-### Docker Support
+## Testing
 
-```dockerfile
-FROM node:20-slim
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --production
-COPY dist/ ./dist/
-CMD ["node", "dist/index.js"]
+Vitest:
+
+```bash
+npm test              # Run tests
+npm run test:coverage # With coverage
 ```

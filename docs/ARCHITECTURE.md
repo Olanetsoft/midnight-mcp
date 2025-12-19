@@ -1,158 +1,91 @@
-# Midnight MCP Server Architecture
+# Architecture
 
-## Overview
-
-The Midnight MCP Server implements the [Model Context Protocol](https://modelcontextprotocol.io/) to provide AI assistants with access to Midnight blockchain development resources. It enables semantic search, contract analysis, and documentation access through a standardized interface.
+## System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────┐
 │                        MCP Client                                │
-│              (Claude Desktop, Cursor, etc.)                      │
-└─────────────────────────────────────────────────────────────────┘
+│                (Claude Desktop, Cursor, etc.)                    │
+└──────────────────────────────────────────────────────────────────┘
                               │
-                              │ JSON-RPC 2.0 over stdio
+                              │ JSON-RPC 2.0 / stdio
                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      MCP Server Layer                            │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │   Tools     │  │  Resources  │  │        Prompts          │  │
-│  │ (14 tools)  │  │(20 resources│  │     (5 templates)       │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                      midnight-mcp                                │
+│  ┌────────────┐  ┌─────────────┐  ┌────────────┐                │
+│  │ 16 Tools   │  │ 20 Resources│  │ 5 Prompts  │                │
+│  └────────────┘  └─────────────┘  └────────────┘                │
+└──────────────────────────────────────────────────────────────────┘
                               │
-        ┌─────────────────────┼─────────────────────┐
-        ▼                     ▼                     ▼
-┌───────────────┐    ┌───────────────┐    ┌───────────────┐
-│  Vector Store │    │    GitHub     │    │    Parser     │
-│  (ChromaDB)   │    │   (Octokit)   │    │   (Compact/   │
-│  (optional)   │    │  (with cache) │    │   TypeScript) │
-└───────────────┘    └───────────────┘    └───────────────┘
-        │
-        ▼
-┌───────────────┐
-│   Embeddings  │
-│   (OpenAI)    │
-│  (optional)   │
-└───────────────┘
+           ┌──────────────────┼──────────────────┐
+           ▼                  ▼                  ▼
+    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+    │ Hosted API  │    │   GitHub    │    │   Parser    │
+    │  (default)  │    │  (Octokit)  │    │  (Compact)  │
+    └─────────────┘    └─────────────┘    └─────────────┘
+           │
+           ▼ (local mode only)
+    ┌─────────────┐    ┌─────────────┐
+    │  ChromaDB   │◄───│   OpenAI    │
+    └─────────────┘    └─────────────┘
 ```
+
+## Modes
+
+**Hosted mode** (default): Search requests go to a hosted API. Zero configuration.
+
+**Local mode**: Set `MIDNIGHT_LOCAL=true`. Requires ChromaDB + OpenAI API key. Search runs locally with your own embeddings.
 
 ## Indexed Repositories
 
-The server indexes 16 repositories (15 from Midnight organization + 1 partner):
+16 repositories from [midnightntwrk](https://github.com/midnightntwrk) + 1 partner:
 
-### Core Language & SDK
+| Repository                       | Contents                  |
+| -------------------------------- | ------------------------- |
+| `compact`                        | Compact language, stdlib  |
+| `midnight-js`                    | TypeScript SDK            |
+| `midnight-docs`                  | Official documentation    |
+| `example-counter`                | Counter contract example  |
+| `example-bboard`                 | Bulletin board DApp       |
+| `example-dex`                    | DEX example               |
+| `create-mn-app`                  | CLI scaffolding           |
+| `midnight-wallet`                | Wallet implementation     |
+| `midnight-indexer`               | Blockchain indexer        |
+| `midnight-node-docker`           | Node Docker configs       |
+| `midnight-dapp-connector-api`    | DApp connector API        |
+| `compact-tree-sitter`            | Tree-sitter grammar       |
+| `midnight-awesome-dapps`         | Community DApp list       |
+| `contributor-hub`                | Contributor resources     |
+| `OpenZeppelin/compact-contracts` | Audited contract patterns |
 
-| Repository    | Description                     | File Types               |
-| ------------- | ------------------------------- | ------------------------ |
-| `compact`     | Compact smart contract language | `.compact`, `.ts`, `.md` |
-| `midnight-js` | JavaScript/TypeScript SDK       | `.ts`, `.md`             |
+## Components
 
-### Documentation
+### Tools (`src/tools/`)
 
-| Repository      | Description            | File Types    |
-| --------------- | ---------------------- | ------------- |
-| `midnight-docs` | Official documentation | `.md`, `.mdx` |
+| Tool                              | Purpose                                        |
+| --------------------------------- | ---------------------------------------------- |
+| `midnight-search-compact`         | Semantic search over Compact code              |
+| `midnight-search-typescript`      | Semantic search over TypeScript SDK            |
+| `midnight-search-docs`            | Semantic search over documentation             |
+| `midnight-analyze-contract`       | Static analysis: structure, patterns, security |
+| `midnight-explain-circuit`        | Explain circuit logic and ZK implications      |
+| `midnight-get-file`               | Fetch file from GitHub                         |
+| `midnight-list-examples`          | List example contracts                         |
+| `midnight-get-latest-updates`     | Recent commits                                 |
+| `midnight-get-version-info`       | Latest release info                            |
+| `midnight-check-breaking-changes` | Breaking changes since version X               |
+| `midnight-get-migration-guide`    | Upgrade guide between versions                 |
+| `midnight-get-file-at-version`    | File content at specific tag                   |
+| `midnight-compare-syntax`         | Diff file between versions                     |
+| `midnight-get-latest-syntax`      | Canonical syntax reference                     |
+| `midnight-health-check`           | Server health                                  |
+| `midnight-get-status`             | Rate limits, cache stats                       |
 
-### Example DApps
+### Resources (`src/resources/`)
 
-| Repository        | Description                     | File Types                       |
-| ----------------- | ------------------------------- | -------------------------------- |
-| `example-counter` | Simple counter contract example | `.compact`, `.ts`, `.md`         |
-| `example-bboard`  | Bulletin board DApp             | `.compact`, `.ts`, `.tsx`, `.md` |
-| `example-dex`     | Decentralized exchange example  | `.compact`, `.ts`, `.tsx`, `.md` |
+Accessible via `midnight://` URIs:
 
-### Developer Tools
-
-| Repository        | Description           | File Types            |
-| ----------------- | --------------------- | --------------------- |
-| `create-mn-app`   | CLI scaffolding tool  | `.ts`, `.md`, `.json` |
-| `midnight-wallet` | Wallet implementation | `.ts`, `.tsx`, `.md`  |
-
-### Infrastructure
-
-| Repository             | Description         | File Types                  |
-| ---------------------- | ------------------- | --------------------------- |
-| `midnight-indexer`     | Blockchain indexer  | `.ts`, `.md`, `.rs`         |
-| `midnight-node-docker` | Node Docker configs | `.md`, `Dockerfile`, `.yml` |
-
-### APIs & Connectors
-
-| Repository                    | Description        | File Types   |
-| ----------------------------- | ------------------ | ------------ |
-| `midnight-dapp-connector-api` | DApp connector API | `.ts`, `.md` |
-
-### Tooling
-
-| Repository            | Description                     | File Types           |
-| --------------------- | ------------------------------- | -------------------- |
-| `compact-tree-sitter` | Tree-sitter grammar for Compact | `.js`, `.md`, `.scm` |
-
-### Community
-
-| Repository               | Description           | File Types |
-| ------------------------ | --------------------- | ---------- |
-| `midnight-awesome-dapps` | Curated DApp list     | `.md`      |
-| `contributor-hub`        | Contributor resources | `.md`      |
-
-### Partner Libraries
-
-| Repository                       | Description                                                           | File Types               |
-| -------------------------------- | --------------------------------------------------------------------- | ------------------------ |
-| `OpenZeppelin/compact-contracts` | OpenZeppelin Contracts for Midnight - secure, audited design patterns | `.compact`, `.ts`, `.md` |
-
-## Core Components
-
-### 1. Server (`src/server.ts`)
-
-The main MCP server implementation using `@modelcontextprotocol/sdk`. Handles:
-
-- Tool registration and execution
-- Resource listing and reading
-- Prompt template management
-- Request/response lifecycle
-
-```typescript
-const server = new Server(SERVER_INFO, {
-  capabilities: {
-    tools: {},
-    resources: { subscribe: true, listChanged: true },
-    prompts: { listChanged: true },
-  },
-});
-```
-
-### 2. Tools (`src/tools/`)
-
-Fourteen tools exposed to AI assistants:
-
-| Tool                              | File          | Description                              |
-| --------------------------------- | ------------- | ---------------------------------------- |
-| `midnight-search-compact`         | search.ts     | Semantic search across Compact contracts |
-| `midnight-search-typescript`      | search.ts     | Search TypeScript SDK code               |
-| `midnight-search-docs`            | search.ts     | Search documentation                     |
-| `midnight-analyze-contract`       | analyze.ts    | Static analysis of Compact contracts     |
-| `midnight-explain-circuit`        | analyze.ts    | Plain-language circuit explanations      |
-| `midnight-get-file`               | repository.ts | Fetch files from GitHub repos            |
-| `midnight-list-examples`          | repository.ts | List example contracts/DApps             |
-| `midnight-get-latest-updates`     | repository.ts | Recent repository changes                |
-| `midnight-get-version-info`       | repository.ts | Get latest version and release info      |
-| `midnight-check-breaking-changes` | repository.ts | Check for breaking changes since version |
-| `midnight-get-migration-guide`    | repository.ts | Migration guide between versions         |
-| `midnight-get-file-at-version`    | repository.ts | Get file at specific version             |
-| `midnight-compare-syntax`         | repository.ts | Compare file between two versions        |
-| `midnight-get-latest-syntax`      | repository.ts | Get authoritative syntax reference       |
-
-Each tool has:
-
-- Zod schema for input validation
-- Async handler function
-- Structured JSON output
-
-### 3. Resources (`src/resources/`)
-
-Sixteen resources accessible via `midnight://` URIs:
-
-**Documentation** (`docs.ts`):
+**Documentation**
 
 - `midnight://docs/compact-reference`
 - `midnight://docs/sdk-api`
@@ -161,7 +94,7 @@ Sixteen resources accessible via `midnight://` URIs:
 - `midnight://docs/concepts/witnesses`
 - `midnight://docs/concepts/kachina`
 
-**Code** (`code.ts`):
+**Code**
 
 - `midnight://code/examples/counter`
 - `midnight://code/examples/bboard`
@@ -171,205 +104,89 @@ Sixteen resources accessible via `midnight://` URIs:
 - `midnight://code/templates/token`
 - `midnight://code/templates/voting`
 
-**Schemas** (`schemas.ts`):
+**Schemas**
 
 - `midnight://schema/compact-ast`
 - `midnight://schema/transaction`
 - `midnight://schema/proof`
 
-### 4. Prompts (`src/prompts/`)
+### Prompts (`src/prompts/`)
 
-Five prompt templates for common development tasks:
-
-| Prompt                        | Purpose                          |
-| ----------------------------- | -------------------------------- |
-| `midnight-create-contract`    | Guided contract creation         |
-| `midnight-review-contract`    | Security & best practices review |
-| `midnight-explain-concept`    | Educational explanations         |
-| `midnight-compare-approaches` | Implementation comparison        |
-| `midnight-debug-contract`     | Debug assistance                 |
-
-### 5. Pipeline (`src/pipeline/`)
-
-Data ingestion pipeline for indexing Midnight repositories:
-
-```
-GitHub API → Parser → Embeddings → Vector Store
-```
-
-**Components**:
-
-- `github.ts` - Repository fetching via Octokit
-- `parser.ts` - Compact/TypeScript/Markdown parsing
-- `embeddings.ts` - OpenAI text-embedding-3-small
-- `indexer.ts` - Orchestrates the pipeline
-
-### 6. Vector Store (`src/db/`)
-
-ChromaDB integration for semantic search:
-
-```typescript
-interface CodeDocument {
-  id: string;
-  content: string;
-  embedding: number[];
-  metadata: {
-    repository: string;
-    filePath: string;
-    language: string;
-    startLine: number;
-    endLine: number;
-    codeType: string;
-    codeName: string;
-    isPublic: boolean;
-  };
-}
-```
-
-**Fallback behavior**: When ChromaDB is unavailable, the server continues without search functionality.
-
-### 7. Configuration (`src/utils/`)
-
-Zod-validated configuration from environment variables:
-
-```typescript
-const ConfigSchema = z.object({
-  githubToken: z.string().optional(),
-  chromaUrl: z.string().default("http://localhost:8000"),
-  openaiApiKey: z.string().optional(),
-  embeddingModel: z.string().default("text-embedding-3-small"),
-  logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
-  syncInterval: z.number().default(900000),
-});
-```
+| Prompt                        | Use case                 |
+| ----------------------------- | ------------------------ |
+| `midnight-create-contract`    | New contract scaffolding |
+| `midnight-review-contract`    | Security review          |
+| `midnight-explain-concept`    | Learn Midnight concepts  |
+| `midnight-compare-approaches` | Compare implementations  |
+| `midnight-debug-contract`     | Debug contract issues    |
 
 ## Data Flow
 
-### Search Query Flow
+### Search (hosted mode)
 
 ```
-1. User asks Claude: "Find access control examples"
-2. Claude calls tool: midnight-search-compact
-3. Server receives request via stdio
-4. Query → OpenAI → Embedding vector
-5. Vector → ChromaDB → Similar documents
-6. Results formatted and returned
-7. Claude presents findings to user
+Query → Hosted API → Vector search → Results
 ```
 
-### Contract Analysis Flow
+### Search (local mode)
 
 ```
-1. User provides Compact code to Claude
-2. Claude calls tool: midnight-analyze-contract
-3. Server parses contract (no external deps)
-4. Static analysis:
-   - Structure extraction (ledger, circuits, witnesses)
-   - Pattern detection
-   - Security checks
-5. Analysis returned as structured JSON
+Query → OpenAI embedding → ChromaDB query → Results
 ```
 
-### Resource Read Flow
+### Contract Analysis
 
 ```
-1. Claude reads: midnight://docs/compact-reference
-2. Server maps URI to content provider
-3. Content fetched (GitHub or cached)
-4. Markdown/code returned to Claude
+Code → Parser → Structure extraction → Pattern detection → Security checks → Report
+```
+
+### Resource Read
+
+```
+URI → Map to provider → Fetch from GitHub (cached) → Content
 ```
 
 ## File Structure
 
 ```
 src/
-├── index.ts              # Entry point, starts server
-├── server.ts             # MCP server setup & handlers
+├── index.ts           # Entry point
+├── server.ts          # MCP server, request handlers
 ├── tools/
-│   ├── index.ts          # Tool registry
-│   ├── search.ts         # Search tools (3)
-│   ├── analyze.ts        # Analysis tools (2)
-│   └── repository.ts     # GitHub tools (3)
+│   ├── search.ts      # Search tools (3)
+│   ├── analyze.ts     # Analysis tools (2)
+│   └── repository.ts  # GitHub tools (11)
 ├── resources/
-│   ├── index.ts          # Resource registry
-│   ├── docs.ts           # Documentation resources (6)
-│   ├── code.ts           # Code resources (7)
-│   └── schemas.ts        # Schema resources (3)
+│   ├── docs.ts        # Documentation URIs
+│   ├── code.ts        # Code examples URIs
+│   └── schemas.ts     # Schema URIs
 ├── prompts/
-│   ├── index.ts          # Prompt registry
-│   └── templates.ts      # Prompt definitions (5)
+│   └── templates.ts   # Prompt definitions
 ├── pipeline/
-│   ├── github.ts         # GitHub API client
-│   ├── parser.ts         # Code parsing
-│   ├── embeddings.ts     # OpenAI embeddings
-│   └── indexer.ts        # Indexing orchestration
+│   ├── github.ts      # GitHub API client
+│   ├── parser.ts      # Compact/TS parsing
+│   └── indexer.ts     # Indexing orchestration
 ├── db/
-│   ├── index.ts          # DB exports
-│   └── vectorStore.ts    # ChromaDB integration
+│   └── vectorStore.ts # ChromaDB client
 └── utils/
-    ├── index.ts          # Utils exports
-    ├── config.ts         # Configuration
-    └── logger.ts         # Logging
+    ├── config.ts      # Configuration
+    ├── hosted-api.ts  # Hosted API client
+    └── logger.ts      # Logging
 ```
 
-## Error Handling
+## Graceful Degradation
 
-### Graceful Degradation
+| Missing         | Behavior                               |
+| --------------- | -------------------------------------- |
+| Hosted API down | Falls back to local mode if configured |
+| OpenAI API key  | Search disabled                        |
+| ChromaDB        | Search returns empty                   |
+| GitHub token    | 60 req/hr limit (vs 5000 with token)   |
 
-The server is designed to work with partial configuration:
+## Security
 
-| Missing        | Impact                               |
-| -------------- | ------------------------------------ |
-| OpenAI API key | Search returns dummy results         |
-| ChromaDB       | Search returns empty results         |
-| GitHub token   | Lower rate limits (60/hr vs 5000/hr) |
-
-### Error Responses
-
-Tools return structured errors:
-
-```typescript
-{
-  content: [{
-    type: "text",
-    text: "Error executing tool: <message>"
-  }],
-  isError: true
-}
-```
-
-## Security Considerations
-
-1. **Read-only by default** - No write operations to repositories
-2. **Environment variables** - Secrets never logged or exposed
-3. **Input validation** - All tool inputs validated via Zod
-4. **Rate limiting** - Respects GitHub API limits
-5. **Local vector store** - Data stays on user's machine
-
-## Extending the Server
-
-### Adding a New Tool
-
-1. Define Zod schema in `src/tools/`
-2. Implement handler function
-3. Register in `src/tools/index.ts`
-
-```typescript
-export const myToolDef = {
-  name: "midnight-my-tool",
-  description: "Description for AI",
-  inputSchema: zodToJsonSchema(MyInputSchema),
-  handler: myToolHandler,
-};
-```
-
-### Adding a New Resource
-
-1. Add URI pattern to `src/resources/`
-2. Implement content provider
-3. Register in `allResources` array
-
-### Adding a New Prompt
-
-1. Define in `src/prompts/templates.ts`
-2. Register in `promptDefinitions` array
+- Read-only: no write operations
+- Secrets in env vars, never logged
+- Input validation via Zod
+- Rate limiting respected
+- Local mode: data stays on your machine

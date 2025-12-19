@@ -2,147 +2,94 @@
 
 ## Tools
 
-### midnight-search-compact
+### Search Tools
 
-Search Compact smart contract code and patterns using semantic search.
+#### midnight-search-compact
 
-**Input Schema:**
+Search Compact smart contract code.
 
 ```typescript
+// Input
 {
-  query: string;          // Natural language search query
-  limit?: number;         // Max results (default: 10)
-  filter?: {
-    repository?: string;  // Filter by repo name
-    isPublic?: boolean;   // Filter by visibility
-  };
+  query: string;      // Search query
+  limit?: number;     // Max results (default: 10)
 }
-```
 
-**Output:**
-
-```typescript
+// Output
 {
   results: Array<{
-    content: string; // Code snippet
-    score: number; // Similarity score (0-1)
+    content: string;
+    score: number;
     metadata: {
       repository: string;
       filePath: string;
       language: string;
       startLine: number;
       endLine: number;
-      codeType: string;
-      codeName: string;
-      isPublic: boolean;
     };
   }>;
+}
+```
+
+#### midnight-search-typescript
+
+Search TypeScript SDK code.
+
+```typescript
+// Input
+{
   query: string;
-  totalResults: number;
+  limit?: number;
 }
+// Output: same as search-compact
 ```
 
-**Example:**
+#### midnight-search-docs
 
-```json
+Search documentation.
+
+```typescript
+// Input
 {
-  "name": "midnight-search-compact",
-  "arguments": {
-    "query": "access control pattern with authorization",
-    "limit": 5
-  }
+  query: string;
+  category?: "guides" | "api" | "concepts" | "all";
+  limit?: number;
 }
+// Output: same as search-compact
 ```
 
 ---
 
-### midnight-search-typescript
+### Analysis Tools
 
-Search TypeScript SDK code, types, and API implementations.
+#### midnight-analyze-contract
 
-**Input Schema:**
+Static analysis of Compact contracts.
 
 ```typescript
+// Input
 {
-  query: string;              // Search query
-  includeTypes?: boolean;     // Include type definitions (default: true)
-  includeExamples?: boolean;  // Include usage examples (default: true)
-  limit?: number;             // Max results (default: 10)
+  code: string;           // Contract source
+  checkSecurity?: boolean; // Run security checks (default: true)
 }
-```
 
-**Output:** Same structure as `search-compact`
-
----
-
-### midnight-search-docs
-
-Full-text search across Midnight documentation.
-
-**Input Schema:**
-
-```typescript
-{
-  query: string;                              // Documentation search query
-  category?: "guides" | "api" | "concepts" | "all";  // Filter category
-  limit?: number;                             // Max results (default: 10)
-}
-```
-
-**Output:** Same structure as `search-compact`
-
----
-
-### midnight-analyze-contract
-
-Analyze a Compact contract for structure, patterns, and security issues.
-
-**Input Schema:**
-
-```typescript
-{
-  code: string;               // Compact contract source code
-  filename?: string;          // Optional filename for context
-  checkSecurity?: boolean;    // Run security checks (default: true)
-}
-```
-
-**Output:**
-
-```typescript
+// Output
 {
   structure: {
     hasLedger: boolean;
     hasCircuits: boolean;
     hasWitnesses: boolean;
-    ledgerFields: Array<{
-      name: string;
-      type: string;
-      isShielded: boolean;
-    }>;
-    circuits: Array<{
-      name: string;
-      parameters: Array<{ name: string; type: string }>;
-      returnType: string;
-      isExported: boolean;
-    }>;
-    witnesses: Array<{
-      name: string;
-      parameters: Array<{ name: string; type: string }>;
-      returnType: string;
-    }>;
+    ledgerFields: Array<{ name: string; type: string; isShielded: boolean }>;
+    circuits: Array<{ name: string; parameters: Array<{name: string; type: string}>; returnType: string; isExported: boolean }>;
+    witnesses: Array<{ name: string; parameters: Array<{name: string; type: string}>; returnType: string }>;
   };
   patterns: {
-    detected: string[];        // e.g., ["access-control", "state-management"]
-    suggestions: string[];     // Improvement suggestions
+    detected: string[];
+    suggestions: string[];
   };
   security: {
-    issues: Array<{
-      severity: "high" | "medium" | "low";
-      message: string;
-      line?: number;
-    }>;
-    score: number;             // 0-100
+    issues: Array<{ severity: "high" | "medium" | "low"; message: string; line?: number }>;
+    score: number;
   };
   metrics: {
     lineCount: number;
@@ -153,133 +100,92 @@ Analyze a Compact contract for structure, patterns, and security issues.
 }
 ```
 
-**Example:**
+#### midnight-explain-circuit
 
-```json
-{
-  "name": "midnight-analyze-contract",
-  "arguments": {
-    "code": "ledger { counter: Counter }\ncircuit increment() { counter.increment() }",
-    "checkSecurity": true
-  }
-}
-```
-
----
-
-### midnight-explain-circuit
-
-Explain what a circuit does in plain language with ZK implications.
-
-**Input Schema:**
+Explain circuit logic.
 
 ```typescript
+// Input
 {
-  circuitCode: string;        // Circuit code to explain
-  context?: string;           // Additional context (e.g., contract name)
-  verbosity?: "brief" | "detailed";  // Level of detail (default: "detailed")
+  circuitCode: string;
+  verbosity?: "brief" | "detailed";
 }
-```
 
-**Output:**
-
-```typescript
+// Output
 {
-  summary: string;            // One-sentence summary
-  explanation: string;        // Detailed explanation
+  summary: string;
+  explanation: string;
   zkImplications: {
-    publicInputs: string[];   // What's visible on-chain
-    privateInputs: string[];  // What stays private
-    proofGenerated: string;   // What the proof attests to
+    publicInputs: string[];
+    privateInputs: string[];
+    proofGenerated: string;
   };
-  stateChanges: Array<{
-    field: string;
-    change: string;
-  }>;
-  gasEstimate?: string;       // Rough gas estimate
+  stateChanges: Array<{ field: string; change: string }>;
 }
 ```
 
 ---
 
-### midnight-get-file
+### Repository Tools
 
-Retrieve a specific file from Midnight repositories.
+#### midnight-get-file
 
-**Input Schema:**
+Fetch file from GitHub.
 
 ```typescript
+// Input
 {
-  repository: string;         // Repository name (e.g., "midnight-examples")
-  path: string;               // File path within repo
-  ref?: string;               // Branch/tag/commit (default: "main")
+  repository: string;  // e.g., "compact"
+  path: string;
+  ref?: string;        // Branch/tag (default: "main")
 }
-```
 
-**Output:**
-
-```typescript
+// Output
 {
-  content: string; // File content
+  content: string;
   path: string;
   repository: string;
   ref: string;
-  size: number; // File size in bytes
-  encoding: string; // Usually "utf-8"
+  size: number;
 }
 ```
 
----
+#### midnight-list-examples
 
-### midnight-list-examples
-
-List available example contracts and DApps.
-
-**Input Schema:**
+List example contracts.
 
 ```typescript
+// Input
 {
   category?: "contracts" | "dapps" | "patterns" | "all";
   language?: "compact" | "typescript" | "all";
 }
-```
 
-**Output:**
-
-```typescript
+// Output
 {
   examples: Array<{
     name: string;
     description: string;
     path: string;
     repository: string;
-    category: string;
-    language: string;
     complexity: "beginner" | "intermediate" | "advanced";
   }>;
-  totalCount: number;
 }
 ```
 
----
+#### midnight-get-latest-updates
 
-### midnight-get-latest-updates
-
-Retrieve recent changes across Midnight repositories.
-
-**Input Schema:**
+Recent commits across repos.
 
 ```typescript
+// Input
 {
-  repository?: string;        // Filter by repo (optional)
-  limit?: number;             // Max commits (default: 20)
-  since?: string;             // ISO date string (optional)
+  repository?: string;
+  limit?: number;       // Default: 20
+  since?: string;       // ISO date
 }
-```
 
-**Output:**
-
-```typescript
+// Output
 {
   updates: Array<{
     repository: string;
@@ -289,64 +195,44 @@ Retrieve recent changes across Midnight repositories.
     date: string;
     filesChanged: string[];
   }>;
-  lastChecked: string;
 }
 ```
 
----
+#### midnight-get-version-info
 
-### midnight-get-version-info
-
-Get the latest version and release information for a repository.
-
-**Input Schema:**
+Get latest version info.
 
 ```typescript
+// Input
 {
-  repo: string; // Repository name (e.g., "compact", "midnight-js")
+  repo: string;
 }
-```
 
-**Output:**
-
-```typescript
+// Output
 {
   repository: string;
   latestVersion: string;
   latestStableVersion: string;
   publishedAt: string | null;
   releaseNotes: string | null;
-  recentReleases: Array<{
-    version: string;
-    date: string;
-    isPrerelease: boolean;
-    url: string;
-  }>;
+  recentReleases: Array<{ version: string; date: string; isPrerelease: boolean }>;
   recentBreakingChanges: string[];
-  versionContext: string;
 }
 ```
 
----
+#### midnight-check-breaking-changes
 
-### midnight-check-breaking-changes
-
-Check for breaking changes between your current version and the latest.
-
-**Input Schema:**
+Check for breaking changes.
 
 ```typescript
+// Input
 {
-  repo: string; // Repository name
-  currentVersion: string; // Version you're using (e.g., "v1.0.0")
+  repo: string;
+  currentVersion: string;
 }
-```
 
-**Output:**
-
-```typescript
+// Output
 {
-  repository: string;
   currentVersion: string;
   latestVersion: string;
   isOutdated: boolean;
@@ -357,34 +243,22 @@ Check for breaking changes between your current version and the latest.
 }
 ```
 
----
+#### midnight-get-migration-guide
 
-### midnight-get-migration-guide
-
-Get a detailed migration guide for upgrading between versions.
-
-**Input Schema:**
+Migration guide between versions.
 
 ```typescript
+// Input
 {
-  repo: string;        // Repository name
-  fromVersion: string; // Version migrating from
-  toVersion?: string;  // Target version (default: latest stable)
+  repo: string;
+  fromVersion: string;
+  toVersion?: string;    // Default: latest
 }
-```
 
-**Output:**
-
-```typescript
+// Output
 {
-  repository: string;
   from: string;
   to: string;
-  summary: {
-    breakingChangesCount: number;
-    deprecationsCount: number;
-    newFeaturesCount: number;
-  };
   breakingChanges: string[];
   deprecations: string[];
   newFeatures: string[];
@@ -393,91 +267,101 @@ Get a detailed migration guide for upgrading between versions.
 }
 ```
 
----
+#### midnight-get-file-at-version
 
-### midnight-get-file-at-version
-
-Get the exact content of a file at a specific version. **Critical for ensuring code recommendations match the user's version.**
-
-**Input Schema:**
+File at specific version.
 
 ```typescript
+// Input
 {
-  repo: string; // Repository name
-  path: string; // File path within repository
-  version: string; // Version tag (e.g., "v1.0.0") or branch
-}
-```
-
-**Output:**
-
-```typescript
-{
-  repository: string;
+  repo: string;
   path: string;
   version: string;
+}
+
+// Output
+{
   content: string;
-  note: string;
+  version: string;
 }
 ```
 
----
+#### midnight-compare-syntax
 
-### midnight-compare-syntax
-
-Compare a file between two versions to see what changed.
-
-**Input Schema:**
+Diff file between versions.
 
 ```typescript
+// Input
 {
-  repo: string;       // Repository name
-  path: string;       // File path to compare
-  oldVersion: string; // Old version tag
-  newVersion?: string; // New version (default: latest)
-}
-```
-
-**Output:**
-
-```typescript
-{
-  repository: string;
+  repo: string;
   path: string;
   oldVersion: string;
-  newVersion: string;
+  newVersion?: string;   // Default: latest
+}
+
+// Output
+{
   hasDifferences: boolean;
   oldContent: string | null;
   newContent: string | null;
-  recommendation: string;
 }
 ```
 
----
+#### midnight-get-latest-syntax
 
-### midnight-get-latest-syntax
-
-Get the authoritative syntax reference for Compact at the latest version. **Use this as the source of truth when writing contracts.**
-
-**Input Schema:**
+Get syntax reference.
 
 ```typescript
+// Input
 {
-  repo?: string; // Repository name (default: "compact")
+  repo?: string;         // Default: "compact"
 }
-```
 
-**Output:**
-
-```typescript
+// Output
 {
-  repository: string;
   version: string;
-  syntaxFiles: Array<{
-    path: string;
-    content: string;
-  }>;
-  note: string;
+  syntaxFiles: Array<{ path: string; content: string }>;
+}
+```
+
+#### midnight-health-check
+
+Server health status.
+
+```typescript
+// Input: none
+
+// Output
+{
+  status: "healthy" | "degraded" | "unhealthy";
+  mode: "hosted" | "local";
+  services: {
+    github: boolean;
+    vectorStore: boolean;
+    hostedApi: boolean;
+  }
+}
+```
+
+#### midnight-get-status
+
+Rate limits and stats.
+
+```typescript
+// Input: none
+
+// Output
+{
+  githubRateLimit: {
+    remaining: number;
+    limit: number;
+    reset: string;
+  }
+  cacheStats: {
+    hits: number;
+    misses: number;
+  }
+  mode: "hosted" | "local";
 }
 ```
 
@@ -485,177 +369,94 @@ Get the authoritative syntax reference for Compact at the latest version. **Use 
 
 ## Resources
 
-Resources are accessed via URI patterns. Use `resources/read` with the URI.
+Access via `resources/read` with URI.
 
-### Documentation Resources
-
-| URI                                       | Description                         |
-| ----------------------------------------- | ----------------------------------- |
-| `midnight://docs/compact-reference`       | Complete Compact language reference |
-| `midnight://docs/sdk-api`                 | TypeScript SDK API documentation    |
-| `midnight://docs/concepts/zero-knowledge` | ZK proofs in Midnight               |
-| `midnight://docs/concepts/shielded-state` | Shielded vs unshielded state        |
-| `midnight://docs/concepts/witnesses`      | How witness functions work          |
-| `midnight://docs/concepts/kachina`        | The Kachina protocol                |
-
-### Code Resources
-
-| URI                                           | Description               |
-| --------------------------------------------- | ------------------------- |
-| `midnight://code/examples/counter`            | Simple counter contract   |
-| `midnight://code/examples/bboard`             | Bulletin board DApp       |
-| `midnight://code/patterns/state-management`   | State management patterns |
-| `midnight://code/patterns/access-control`     | Access control patterns   |
-| `midnight://code/patterns/privacy-preserving` | Privacy patterns          |
-| `midnight://code/templates/token`             | Token contract template   |
-| `midnight://code/templates/voting`            | Voting contract template  |
-
-### Schema Resources
-
-| URI                             | Description               |
-| ------------------------------- | ------------------------- |
-| `midnight://schema/compact-ast` | Compact AST JSON schema   |
-| `midnight://schema/transaction` | Transaction format schema |
-| `midnight://schema/proof`       | ZK proof format schema    |
-
-**Example request:**
-
-```json
-{
-  "method": "resources/read",
-  "params": {
-    "uri": "midnight://docs/compact-reference"
-  }
-}
-```
-
-**Response:**
-
-```json
-{
-  "contents": [
-    {
-      "uri": "midnight://docs/compact-reference",
-      "mimeType": "text/markdown",
-      "text": "# Compact Language Reference\n\n..."
-    }
-  ]
-}
-```
+| URI                                           | Content                    |
+| --------------------------------------------- | -------------------------- |
+| `midnight://docs/compact-reference`           | Compact language reference |
+| `midnight://docs/sdk-api`                     | TypeScript SDK API         |
+| `midnight://docs/concepts/zero-knowledge`     | ZK proofs in Midnight      |
+| `midnight://docs/concepts/shielded-state`     | Shielded vs unshielded     |
+| `midnight://docs/concepts/witnesses`          | Witness functions          |
+| `midnight://docs/concepts/kachina`            | Kachina protocol           |
+| `midnight://code/examples/counter`            | Counter contract           |
+| `midnight://code/examples/bboard`             | Bulletin board DApp        |
+| `midnight://code/patterns/state-management`   | State patterns             |
+| `midnight://code/patterns/access-control`     | Access control patterns    |
+| `midnight://code/patterns/privacy-preserving` | Privacy patterns           |
+| `midnight://code/templates/token`             | Token template             |
+| `midnight://code/templates/voting`            | Voting template            |
+| `midnight://schema/compact-ast`               | Compact AST schema         |
+| `midnight://schema/transaction`               | Transaction schema         |
+| `midnight://schema/proof`                     | Proof schema               |
 
 ---
 
 ## Prompts
 
-Prompts are templates that guide AI assistants through common tasks.
-
 ### midnight-create-contract
-
-Guided prompt for creating new Compact contracts.
-
-**Arguments:**
 
 ```typescript
 {
-  name: string;               // Contract name
-  purpose: string;            // What the contract does
-  features?: string[];        // Desired features
-  hasPrivateState?: boolean;  // Needs shielded state?
+  name: string;
+  purpose: string;
+  features?: string[];
+  hasPrivateState?: boolean;
 }
 ```
 
 ### midnight-review-contract
 
-Security and best practices review for existing contracts.
-
-**Arguments:**
-
 ```typescript
 {
-  code: string;               // Contract code to review
-  focusAreas?: string[];      // Specific areas to focus on
+  code: string;
+  focusAreas?: string[];
 }
 ```
 
 ### midnight-explain-concept
 
-Educational prompt for explaining Midnight concepts.
-
-**Arguments:**
-
 ```typescript
 {
-  concept: string;            // Concept to explain
+  concept: string;
   audienceLevel?: "beginner" | "intermediate" | "advanced";
 }
 ```
 
 ### midnight-compare-approaches
 
-Compare different implementation approaches.
-
-**Arguments:**
-
 ```typescript
 {
-  goal: string;               // What you want to achieve
-  approaches?: string[];      // Specific approaches to compare
+  goal: string;
+  approaches?: string[];
 }
 ```
 
 ### midnight-debug-contract
 
-Help debug issues with a Compact contract.
-
-**Arguments:**
-
 ```typescript
 {
-  code: string;               // Contract code
-  error?: string;             // Error message if any
-  expectedBehavior?: string;  // What should happen
-  actualBehavior?: string;    // What's happening
-}
-```
-
-**Example request:**
-
-```json
-{
-  "method": "prompts/get",
-  "params": {
-    "name": "midnight-create-contract",
-    "arguments": {
-      "name": "TokenVault",
-      "purpose": "Store and transfer tokens with privacy",
-      "hasPrivateState": true
-    }
-  }
+  code: string;
+  error?: string;
+  expectedBehavior?: string;
+  actualBehavior?: string;
 }
 ```
 
 ---
 
-## Error Handling
-
-All tools return errors in a consistent format:
+## Errors
 
 ```typescript
 {
-  content: [{
-    type: "text",
-    text: "Error: <error message>"
-  }],
+  content: [{ type: "text", text: "Error: <message>" }],
   isError: true
 }
 ```
 
-Common error codes:
-
-| Error                          | Cause                    |
-| ------------------------------ | ------------------------ |
-| `Unknown tool: <name>`         | Tool name not found      |
-| `Invalid input: <details>`     | Zod validation failed    |
-| `Vector store not initialized` | ChromaDB unavailable     |
-| `GitHub API error`             | Rate limit or auth issue |
-| `Parse error`                  | Invalid Compact syntax   |
+| Error                          | Cause                |
+| ------------------------------ | -------------------- |
+| `Unknown tool: <name>`         | Invalid tool name    |
+| `Invalid input: <details>`     | Validation failed    |
+| `Vector store not initialized` | ChromaDB unavailable |
+| `GitHub API error`             | Rate limit or auth   |

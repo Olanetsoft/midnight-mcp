@@ -10,7 +10,6 @@ RUN npm ci --only=production
 
 # Copy built files
 COPY dist/ ./dist/
-COPY config/ ./config/
 
 # Set environment
 ENV NODE_ENV=production

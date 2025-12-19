@@ -17,22 +17,21 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop. **That's it!** All features work out of the box—no API keys or setup required.
+Restart Claude Desktop. All features work out of the box—no API keys or setup required.
 
 ---
 
 ## How It Works
 
-By default, the MCP uses a **hosted API** for semantic search. This means:
+By default, the MCP uses a **hosted API** for semantic search:
 
 - ✅ **Zero configuration** — just install and use
 - ✅ **Semantic search** works immediately
-- ✅ **No API keys** needed from you
-- ✅ **Always up-to-date** index
+- ✅ **No API keys** needed
 
-### Optional: Local Mode
+### Local Mode (Optional)
 
-For privacy or offline use, you can run everything locally:
+Run everything locally for privacy or offline use:
 
 ```json
 {
@@ -50,20 +49,17 @@ For privacy or offline use, you can run everything locally:
 }
 ```
 
-Local mode requires:
-1. **ChromaDB** running locally: `docker run -d -p 8000:8000 chromadb/chroma`
-2. **OpenAI API key** for embeddings
-3. Run indexing: `npx midnight-mcp index`
+Local mode requires ChromaDB (`docker run -d -p 8000:8000 chromadb/chroma`) and an OpenAI API key.
 
-### Optional: GitHub Token
+### GitHub Token (Optional)
 
 Add `"GITHUB_TOKEN": "ghp_..."` for higher GitHub API rate limits (60 → 5000 requests/hour).
 
 ---
 
-## What's Included
+## Features
 
-### Tools (16 total)
+### Tools (16)
 
 | Tool                              | Description                             |
 | --------------------------------- | --------------------------------------- |
@@ -84,9 +80,9 @@ Add `"GITHUB_TOKEN": "ghp_..."` for higher GitHub API rate limits (60 → 5000 r
 | `midnight-health-check`           | Check server health status              |
 | `midnight-get-status`             | Get rate limits and cache stats         |
 
-### Resources (20 total)
+### Resources (20)
 
-- `midnight://docs/*` — Documentation (Compact reference, SDK API, ZK concepts, OpenZeppelin patterns)
+- `midnight://docs/*` — Documentation (Compact reference, SDK API, ZK concepts)
 - `midnight://code/*` — Examples, patterns, and templates
 - `midnight://schema/*` — AST, transaction, and proof schemas
 
@@ -95,27 +91,14 @@ Add `"GITHUB_TOKEN": "ghp_..."` for higher GitHub API rate limits (60 → 5000 r
 - `midnight-create-contract` — Create new contracts
 - `midnight-review-contract` — Security review
 - `midnight-explain-concept` — Learn Midnight concepts
+- `midnight-compare-approaches` — Compare implementation approaches
 - `midnight-debug-contract` — Debug issues
-
----
-
-## How Environment Variables Work
-
-The npm package contains no secrets. **You provide your own credentials** via the `env` block in your config:
-
-| Variable         | Required | Without It                             | With It              |
-| ---------------- | -------- | -------------------------------------- | -------------------- |
-| `GITHUB_TOKEN`   | No       | 60 API calls/hour, may hit rate limits | 5,000 calls/hour     |
-| `OPENAI_API_KEY` | No       | Keyword search only (no embeddings)    | Semantic search      |
-| `CHROMA_URL`     | No       | In-memory search, no persistence       | Persistent vector DB |
-
-Your tokens stay on your machine and are only used to access services on your behalf.
 
 ---
 
 ## Developer Setup
 
-For contributors who want to modify or extend the MCP server.
+For contributors:
 
 ```bash
 git clone https://github.com/Olanetsoft/midnight-mcp.git
@@ -125,26 +108,9 @@ npm run build
 npm test
 ```
 
-### Index Midnight repos (for search)
+### API Backend
 
-```bash
-docker run -d -p 8000:8000 chromadb/chroma
-npm run index
-```
-
-### Project Structure
-
-```
-src/
-├── index.ts          # Entry point
-├── server.ts         # MCP server handlers
-├── tools/            # Search, analysis, repository tools
-├── resources/        # Docs, code, schema providers
-├── prompts/          # Prompt templates
-├── pipeline/         # GitHub sync & parsing
-├── db/               # ChromaDB integration
-└── utils/            # Config & logging
-```
+The hosted API lives in the `api/` folder. See [api/README.md](./api/README.md) for setup instructions.
 
 ## License
 

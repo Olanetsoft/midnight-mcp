@@ -15,9 +15,6 @@ const ConfigSchema = z.object({
 
   // Vector Database (only needed for local mode)
   chromaUrl: z.string().default("http://localhost:8000"),
-  qdrantUrl: z.string().optional(),
-  pineconeApiKey: z.string().optional(),
-  pineconeIndex: z.string().optional(),
 
   // Embeddings (only needed for local mode)
   openaiApiKey: z.string().optional(),
@@ -46,9 +43,6 @@ function loadConfig(): Config {
     hostedApiUrl: process.env.MIDNIGHT_API_URL,
     githubToken: process.env.GITHUB_TOKEN,
     chromaUrl: process.env.CHROMA_URL,
-    qdrantUrl: process.env.QDRANT_URL,
-    pineconeApiKey: process.env.PINECONE_API_KEY,
-    pineconeIndex: process.env.PINECONE_INDEX,
     openaiApiKey: process.env.OPENAI_API_KEY,
     embeddingModel: process.env.EMBEDDING_MODEL,
     logLevel: process.env.LOG_LEVEL,
