@@ -59,11 +59,11 @@ docker run -d -p 8000:8000 chromadb/chroma
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `OPENAI_API_KEY` | Yes | For generating embeddings |
-| `CHROMA_URL` | Yes | ChromaDB endpoint (default: `http://localhost:8000`) |
-| `GITHUB_TOKEN` | No | Increases GitHub API rate limit from 60 to 5000 req/hr |
+| Variable         | Required | Description                                            |
+| ---------------- | -------- | ------------------------------------------------------ |
+| `OPENAI_API_KEY` | Yes      | For generating embeddings                              |
+| `CHROMA_URL`     | Yes      | ChromaDB endpoint (default: `http://localhost:8000`)   |
+| `GITHUB_TOKEN`   | No       | Increases GitHub API rate limit from 60 to 5000 req/hr |
 
 ### 3. Start using it
 
@@ -79,16 +79,16 @@ Restart Claude Desktop or Cursor. Ask Claude something like:
 
 ### Tools
 
-| Tool | Description |
-|------|-------------|
-| `midnight:search-compact` | Search Compact contract code |
-| `midnight:search-typescript` | Search TypeScript SDK |
-| `midnight:search-docs` | Search documentation |
-| `midnight:analyze-contract` | Analyze contract structure and security |
-| `midnight:explain-circuit` | Explain circuits in plain language |
-| `midnight:get-file` | Get files from Midnight repos |
-| `midnight:list-examples` | List example contracts |
-| `midnight:get-latest-updates` | Recent repo changes |
+| Tool                          | Description                             |
+| ----------------------------- | --------------------------------------- |
+| `midnight:search-compact`     | Search Compact contract code            |
+| `midnight:search-typescript`  | Search TypeScript SDK                   |
+| `midnight:search-docs`        | Search documentation                    |
+| `midnight:analyze-contract`   | Analyze contract structure and security |
+| `midnight:explain-circuit`    | Explain circuits in plain language      |
+| `midnight:get-file`           | Get files from Midnight repos           |
+| `midnight:list-examples`      | List example contracts                  |
+| `midnight:get-latest-updates` | Recent repo changes                     |
 
 ### Resources
 
