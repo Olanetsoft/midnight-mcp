@@ -1,6 +1,39 @@
 import { Octokit } from "octokit";
 import { config, logger, RepositoryConfig } from "../utils/index.js";
 
+// Simple in-memory cache with TTL
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+class SimpleCache<T> {
+  private cache = new Map<string, CacheEntry<T>>();
+  private ttlMs: number;
+
+  constructor(ttlMinutes: number = 10) {
+    this.ttlMs = ttlMinutes * 60 * 1000;
+  }
+
+  get(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > this.ttlMs) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.data;
+  }
+
+  set(key: string, data: T): void {
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
 export interface GitHubFile {
   path: string;
   content: string;
@@ -27,17 +60,33 @@ export interface RepositoryInfo {
 
 export class GitHubClient {
   private octokit: Octokit;
+  private fileCache = new SimpleCache<GitHubFile>(15); // 15 min cache for files
+  private treeCache = new SimpleCache<string[]>(10); // 10 min cache for trees
+  private repoInfoCache = new SimpleCache<RepositoryInfo>(10); // 10 min cache for repo info
 
   constructor(token?: string) {
     this.octokit = new Octokit({
       auth: token || config.githubToken,
+      request: {
+        timeout: 10000, // 10 second timeout for API calls
+      },
     });
   }
 
   /**
    * Get repository information
    */
-  async getRepositoryInfo(owner: string, repo: string): Promise<RepositoryInfo> {
+  async getRepositoryInfo(
+    owner: string,
+    repo: string
+  ): Promise<RepositoryInfo> {
+    const cacheKey = `repo:${owner}/${repo}`;
+    const cached = this.repoInfoCache.get(cacheKey);
+    if (cached) {
+      logger.debug(`Cache hit for repo info: ${cacheKey}`);
+      return cached;
+    }
+
     try {
       const { data: repoData } = await this.octokit.rest.repos.get({
         owner,
@@ -60,13 +109,16 @@ export class GitHubClient {
           }
         : null;
 
-      return {
+      const result = {
         owner,
         repo,
         branch: repoData.default_branch,
         lastCommit,
         fileCount: 0, // Will be updated during tree fetch
       };
+
+      this.repoInfoCache.set(cacheKey, result);
+      return result;
     } catch (error) {
       logger.error(`Failed to get repository info for ${owner}/${repo}`, {
         error: String(error),
@@ -84,6 +136,13 @@ export class GitHubClient {
     path: string,
     ref?: string
   ): Promise<GitHubFile | null> {
+    const cacheKey = `file:${owner}/${repo}/${path}@${ref || "main"}`;
+    const cached = this.fileCache.get(cacheKey);
+    if (cached) {
+      logger.debug(`Cache hit for file: ${cacheKey}`);
+      return cached;
+    }
+
     try {
       const { data } = await this.octokit.rest.repos.getContent({
         owner,
@@ -101,13 +160,16 @@ export class GitHubClient {
           ? Buffer.from(data.content, "base64").toString("utf-8")
           : data.content;
 
-      return {
+      const result = {
         path: data.path,
         content,
         sha: data.sha,
         size: data.size,
         encoding: data.encoding,
       };
+
+      this.fileCache.set(cacheKey, result);
+      return result;
     } catch (error) {
       logger.warn(`Failed to get file ${path} from ${owner}/${repo}`, {
         error: String(error),
@@ -124,6 +186,13 @@ export class GitHubClient {
     repo: string,
     ref?: string
   ): Promise<string[]> {
+    const cacheKey = `tree:${owner}/${repo}@${ref || "main"}`;
+    const cached = this.treeCache.get(cacheKey);
+    if (cached) {
+      logger.debug(`Cache hit for tree: ${cacheKey}`);
+      return cached;
+    }
+
     try {
       const { data: refData } = await this.octokit.rest.git.getRef({
         owner,
@@ -138,9 +207,12 @@ export class GitHubClient {
         recursive: "true",
       });
 
-      return treeData.tree
+      const result = treeData.tree
         .filter((item) => item.type === "blob" && item.path)
         .map((item) => item.path as string);
+
+      this.treeCache.set(cacheKey, result);
+      return result;
     } catch (error) {
       logger.error(`Failed to get repository tree for ${owner}/${repo}`, {
         error: String(error),
@@ -183,9 +255,15 @@ export class GitHubClient {
     logger.info(`Fetching files from ${owner}/${repo}...`);
 
     const allFiles = await this.getRepositoryTree(owner, repo, branch);
-    const filteredFiles = this.filterFilesByPatterns(allFiles, patterns, exclude);
+    const filteredFiles = this.filterFilesByPatterns(
+      allFiles,
+      patterns,
+      exclude
+    );
 
-    logger.info(`Found ${filteredFiles.length} matching files in ${owner}/${repo}`);
+    logger.info(
+      `Found ${filteredFiles.length} matching files in ${owner}/${repo}`
+    );
 
     const files: GitHubFile[] = [];
     for (const filePath of filteredFiles) {
@@ -208,11 +286,12 @@ export class GitHubClient {
     perPage = 30
   ): Promise<GitHubCommit[]> {
     try {
-      const params: Parameters<typeof this.octokit.rest.repos.listCommits>[0] = {
-        owner,
-        repo,
-        per_page: perPage,
-      };
+      const params: Parameters<typeof this.octokit.rest.repos.listCommits>[0] =
+        {
+          owner,
+          repo,
+          per_page: perPage,
+        };
 
       if (since) {
         params.since = since;

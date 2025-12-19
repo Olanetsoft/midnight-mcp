@@ -354,6 +354,49 @@ export async function getLatestUpdates(input: GetLatestUpdatesInput) {
 export async function getVersionInfo(input: GetVersionInfoInput) {
   logger.debug("Getting version info", input);
 
+  // Special handling for "midnight-examples" - redirect to listing examples
+  const normalizedRepo = input.repo.toLowerCase();
+  if (normalizedRepo === "midnight-examples" || normalizedRepo === "examples") {
+    const exampleRepos = ["example-counter", "example-bboard", "example-dex"];
+    const versions = await Promise.all(
+      exampleRepos.map(async (repoName) => {
+        const resolved = resolveRepo(repoName);
+        if (!resolved) return null;
+        try {
+          const versionInfo = await releaseTracker.getVersionInfo(
+            resolved.owner,
+            resolved.repo
+          );
+          return {
+            name: repoName,
+            repository: `${resolved.owner}/${resolved.repo}`,
+            latestVersion: versionInfo.latestRelease?.tag || "No releases",
+            publishedAt: versionInfo.latestRelease?.publishedAt || null,
+          };
+        } catch {
+          return {
+            name: repoName,
+            repository: `${resolved.owner}/${resolved.repo}`,
+            latestVersion: "Unable to fetch",
+            publishedAt: null,
+          };
+        }
+      })
+    );
+
+    return {
+      note: "There is no single 'midnight-examples' repository. Examples are split across multiple repos:",
+      examples: versions.filter(Boolean),
+      availableExamples: EXAMPLES.map((e) => ({
+        name: e.name,
+        repository: e.repository,
+        description: e.description,
+        complexity: e.complexity,
+      })),
+      hint: "Use 'counter', 'bboard', or 'dex' as repo aliases to get specific example info.",
+    };
+  }
+
   const resolved = resolveRepo(input.repo);
   if (!resolved) {
     throw new Error(

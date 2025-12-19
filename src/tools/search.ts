@@ -5,7 +5,11 @@ import { logger } from "../utils/index.js";
 // Schema definitions for tool inputs
 export const SearchCompactInputSchema = z.object({
   query: z.string().describe("Natural language search query for Compact code"),
-  limit: z.number().optional().default(10).describe("Maximum results to return"),
+  limit: z
+    .number()
+    .optional()
+    .default(10)
+    .describe("Maximum results to return"),
   filter: z
     .object({
       repository: z.string().optional(),
@@ -17,8 +21,16 @@ export const SearchCompactInputSchema = z.object({
 
 export const SearchTypeScriptInputSchema = z.object({
   query: z.string().describe("Search query for TypeScript SDK code"),
-  includeTypes: z.boolean().optional().default(true).describe("Include type definitions"),
-  includeExamples: z.boolean().optional().default(true).describe("Include usage examples"),
+  includeTypes: z
+    .boolean()
+    .optional()
+    .default(true)
+    .describe("Include type definitions"),
+  includeExamples: z
+    .boolean()
+    .optional()
+    .default(true)
+    .describe("Include usage examples"),
   limit: z.number().optional().default(10),
 });
 
@@ -82,7 +94,8 @@ export async function searchTypeScript(input: SearchTypeScriptInput) {
   let filteredResults = results;
   if (!input.includeTypes) {
     filteredResults = results.filter(
-      (r) => r.metadata.codeType !== "type" && r.metadata.codeType !== "interface"
+      (r) =>
+        r.metadata.codeType !== "type" && r.metadata.codeType !== "interface"
     );
   }
 
@@ -141,7 +154,7 @@ export async function searchDocs(input: SearchDocsInput) {
 // Tool definitions for MCP
 export const searchTools = [
   {
-    name: "midnight:search-compact",
+    name: "midnight-search-compact",
     description:
       "Semantic search across Compact smart contract code and patterns. Use this to find circuit definitions, witness functions, ledger declarations, and best practices for Midnight smart contracts.",
     inputSchema: {
@@ -169,7 +182,7 @@ export const searchTools = [
     handler: searchCompact,
   },
   {
-    name: "midnight:search-typescript",
+    name: "midnight-search-typescript",
     description:
       "Search TypeScript SDK code, types, and API implementations. Use this to find how to use the Midnight JavaScript SDK, type definitions, and integration patterns.",
     inputSchema: {
@@ -197,7 +210,7 @@ export const searchTools = [
     handler: searchTypeScript,
   },
   {
-    name: "midnight:search-docs",
+    name: "midnight-search-docs",
     description:
       "Full-text search across official Midnight documentation. Use this to find guides, API documentation, and conceptual explanations about Midnight blockchain and the Compact language.",
     inputSchema: {

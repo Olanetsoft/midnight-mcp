@@ -5,7 +5,11 @@ import { logger } from "../utils/index.js";
 // Schema definitions
 export const AnalyzeContractInputSchema = z.object({
   code: z.string().describe("Compact contract source code"),
-  checkSecurity: z.boolean().optional().default(true).describe("Run security analysis"),
+  checkSecurity: z
+    .boolean()
+    .optional()
+    .default(true)
+    .describe("Run security analysis"),
 });
 
 export const ExplainCircuitInputSchema = z.object({
@@ -45,11 +49,15 @@ export async function analyzeContract(input: AnalyzeContractInput) {
       // Check if private field is used in a public circuit without proper protection
       for (const circuit of circuits) {
         if (circuit.isPublic && circuit.code.includes(field.name)) {
-          if (!circuit.code.includes("disclose") && !circuit.code.includes("commit")) {
+          if (
+            !circuit.code.includes("disclose") &&
+            !circuit.code.includes("commit")
+          ) {
             findings.push({
               severity: "warning",
               message: `Private field '${field.name}' used in public circuit '${circuit.name}' without disclose/commit`,
-              suggestion: "Consider using disclose() or commit() to properly handle private data",
+              suggestion:
+                "Consider using disclose() or commit() to properly handle private data",
             });
           }
         }
@@ -69,7 +77,8 @@ export async function analyzeContract(input: AnalyzeContractInput) {
           findings.push({
             severity: "info",
             message: `Public circuit '${circuit.name}' modifies state without assertions`,
-            suggestion: "Consider adding assertions to validate inputs and permissions",
+            suggestion:
+              "Consider adding assertions to validate inputs and permissions",
           });
         }
       }
@@ -98,7 +107,7 @@ export async function analyzeContract(input: AnalyzeContractInput) {
       findings.push({
         severity: "info",
         message: "Standard library not imported",
-        suggestion: 'Consider adding \'include "std";\' for common utilities',
+        suggestion: "Consider adding 'include \"std\";' for common utilities",
       });
     }
   }
@@ -161,7 +170,8 @@ export async function explainCircuit(input: ExplainCircuitInput) {
   if (!circuit) {
     return {
       error: "No circuit definition found in the provided code",
-      suggestion: "Make sure to provide a complete circuit definition including 'circuit' keyword",
+      suggestion:
+        "Make sure to provide a complete circuit definition including 'circuit' keyword",
     };
   }
 
@@ -223,12 +233,17 @@ export async function explainCircuit(input: ExplainCircuitInput) {
     zkImplications:
       zkImplications.length > 0
         ? zkImplications
-        : ["This circuit generates a zero-knowledge proof that the computation was performed correctly"],
+        : [
+            "This circuit generates a zero-knowledge proof that the computation was performed correctly",
+          ],
     privacyConsiderations: getPrivacyConsiderations(circuit),
   };
 }
 
-function buildCircuitExplanation(circuit: CodeUnit, operations: string[]): string {
+function buildCircuitExplanation(
+  circuit: CodeUnit,
+  operations: string[]
+): string {
   let explanation = `The circuit '${circuit.name}' is a `;
 
   if (circuit.isPublic) {
@@ -239,7 +254,9 @@ function buildCircuitExplanation(circuit: CodeUnit, operations: string[]): strin
 
   if (circuit.parameters && circuit.parameters.length > 0) {
     explanation += `It takes ${circuit.parameters.length} parameter(s): `;
-    explanation += circuit.parameters.map((p) => `${p.name} (${p.type})`).join(", ");
+    explanation += circuit.parameters
+      .map((p) => `${p.name} (${p.type})`)
+      .join(", ");
     explanation += ". ";
   }
 
@@ -279,7 +296,9 @@ function getPrivacyConsiderations(circuit: CodeUnit): string[] {
   }
 
   if (considerations.length === 0) {
-    considerations.push("No specific privacy concerns identified in this circuit");
+    considerations.push(
+      "No specific privacy concerns identified in this circuit"
+    );
   }
 
   return considerations;
@@ -288,7 +307,7 @@ function getPrivacyConsiderations(circuit: CodeUnit): string[] {
 // Tool definitions for MCP
 export const analyzeTools = [
   {
-    name: "midnight:analyze-contract",
+    name: "midnight-analyze-contract",
     description:
       "Analyze a Compact smart contract for structure, patterns, and potential security issues. Returns detailed breakdown of circuits, witnesses, ledger state, and recommendations.",
     inputSchema: {
@@ -308,7 +327,7 @@ export const analyzeTools = [
     handler: analyzeContract,
   },
   {
-    name: "midnight:explain-circuit",
+    name: "midnight-explain-circuit",
     description:
       "Explain what a specific Compact circuit does in plain language, including its zero-knowledge proof implications and privacy considerations.",
     inputSchema: {
