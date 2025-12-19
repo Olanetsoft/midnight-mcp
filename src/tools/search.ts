@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { vectorStore, SearchFilter } from "../db/index.js";
-import { logger } from "../utils/index.js";
+import {
+  logger,
+  validateQuery,
+  validateNumber,
+  searchCache,
+  createCacheKey,
+} from "../utils/index.js";
 
 // Schema definitions for tool inputs
 export const SearchCompactInputSchema = z.object({
@@ -52,16 +58,50 @@ export type SearchDocsInput = z.infer<typeof SearchDocsInputSchema>;
  * Search Compact smart contract code and patterns
  */
 export async function searchCompact(input: SearchCompactInput) {
-  logger.debug("Searching Compact code", { query: input.query });
+  // Validate input
+  const queryValidation = validateQuery(input.query);
+  if (!queryValidation.isValid) {
+    return {
+      error: "Invalid query",
+      details: queryValidation.errors,
+      suggestion: "Provide a valid search query with at least 2 characters",
+    };
+  }
+
+  const limitValidation = validateNumber(input.limit, {
+    min: 1,
+    max: 50,
+    defaultValue: 10,
+  });
+  const sanitizedQuery = queryValidation.sanitized;
+  const limit = limitValidation.value;
+
+  logger.debug("Searching Compact code", {
+    query: sanitizedQuery,
+    originalQuery: input.query,
+  });
+
+  // Check cache first
+  const cacheKey = createCacheKey(
+    "compact",
+    sanitizedQuery,
+    limit,
+    input.filter?.repository
+  );
+  const cached = searchCache.get(cacheKey);
+  if (cached) {
+    logger.debug("Search cache hit", { cacheKey });
+    return cached;
+  }
 
   const filter: SearchFilter = {
     language: "compact",
     ...input.filter,
   };
 
-  const results = await vectorStore.search(input.query, input.limit, filter);
+  const results = await vectorStore.search(sanitizedQuery, limit, filter);
 
-  return {
+  const response = {
     results: results.map((r) => ({
       code: r.content,
       relevanceScore: r.score,
@@ -74,21 +114,61 @@ export async function searchCompact(input: SearchCompactInput) {
       name: r.metadata.codeName,
     })),
     totalResults: results.length,
-    query: input.query,
+    query: sanitizedQuery,
+    ...(queryValidation.warnings.length > 0 && {
+      warnings: queryValidation.warnings,
+    }),
   };
+
+  // Cache the response
+  searchCache.set(cacheKey, response);
+
+  return response;
 }
 
 /**
  * Search TypeScript SDK code, types, and API implementations
  */
 export async function searchTypeScript(input: SearchTypeScriptInput) {
-  logger.debug("Searching TypeScript code", { query: input.query });
+  // Validate input
+  const queryValidation = validateQuery(input.query);
+  if (!queryValidation.isValid) {
+    return {
+      error: "Invalid query",
+      details: queryValidation.errors,
+      suggestion: "Provide a valid search query with at least 2 characters",
+    };
+  }
+
+  const limitValidation = validateNumber(input.limit, {
+    min: 1,
+    max: 50,
+    defaultValue: 10,
+  });
+  const sanitizedQuery = queryValidation.sanitized;
+  const limit = limitValidation.value;
+
+  logger.debug("Searching TypeScript code", { query: sanitizedQuery });
+
+  // Check cache
+  const cacheKey = createCacheKey(
+    "typescript",
+    sanitizedQuery,
+    limit,
+    input.includeTypes,
+    input.includeExamples
+  );
+  const cached = searchCache.get(cacheKey);
+  if (cached) {
+    logger.debug("Search cache hit", { cacheKey });
+    return cached;
+  }
 
   const filter: SearchFilter = {
     language: "typescript",
   };
 
-  const results = await vectorStore.search(input.query, input.limit, filter);
+  const results = await vectorStore.search(sanitizedQuery, limit, filter);
 
   // Filter based on type preferences
   let filteredResults = results;
@@ -99,7 +179,7 @@ export async function searchTypeScript(input: SearchTypeScriptInput) {
     );
   }
 
-  return {
+  const response = {
     results: filteredResults.map((r) => ({
       code: r.content,
       relevanceScore: r.score,
@@ -113,15 +193,52 @@ export async function searchTypeScript(input: SearchTypeScriptInput) {
       isExported: r.metadata.isPublic,
     })),
     totalResults: filteredResults.length,
-    query: input.query,
+    query: sanitizedQuery,
+    ...(queryValidation.warnings.length > 0 && {
+      warnings: queryValidation.warnings,
+    }),
   };
+
+  searchCache.set(cacheKey, response);
+  return response;
 }
 
 /**
  * Full-text search across official Midnight documentation
  */
 export async function searchDocs(input: SearchDocsInput) {
-  logger.debug("Searching documentation", { query: input.query });
+  // Validate input
+  const queryValidation = validateQuery(input.query);
+  if (!queryValidation.isValid) {
+    return {
+      error: "Invalid query",
+      details: queryValidation.errors,
+      suggestion: "Provide a valid search query with at least 2 characters",
+    };
+  }
+
+  const limitValidation = validateNumber(input.limit, {
+    min: 1,
+    max: 50,
+    defaultValue: 10,
+  });
+  const sanitizedQuery = queryValidation.sanitized;
+  const limit = limitValidation.value;
+
+  logger.debug("Searching documentation", { query: sanitizedQuery });
+
+  // Check cache
+  const cacheKey = createCacheKey(
+    "docs",
+    sanitizedQuery,
+    limit,
+    input.category
+  );
+  const cached = searchCache.get(cacheKey);
+  if (cached) {
+    logger.debug("Search cache hit", { cacheKey });
+    return cached;
+  }
 
   const filter: SearchFilter = {
     language: "markdown",
@@ -133,9 +250,9 @@ export async function searchDocs(input: SearchDocsInput) {
     filter.repository = "midnightntwrk/midnight-docs";
   }
 
-  const results = await vectorStore.search(input.query, input.limit, filter);
+  const results = await vectorStore.search(sanitizedQuery, limit, filter);
 
-  return {
+  const response = {
     results: results.map((r) => ({
       content: r.content,
       relevanceScore: r.score,
@@ -146,9 +263,15 @@ export async function searchDocs(input: SearchDocsInput) {
       },
     })),
     totalResults: results.length,
-    query: input.query,
+    query: sanitizedQuery,
     category: input.category,
+    ...(queryValidation.warnings.length > 0 && {
+      warnings: queryValidation.warnings,
+    }),
   };
+
+  searchCache.set(cacheKey, response);
+  return response;
 }
 
 // Tool definitions for MCP

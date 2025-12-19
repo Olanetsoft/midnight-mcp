@@ -1,5 +1,12 @@
 import { Octokit } from "octokit";
-import { config, logger, RepositoryConfig } from "../utils/index.js";
+import {
+  config,
+  logger,
+  RepositoryConfig,
+  updateRateLimit,
+  shouldProceedWithRequest,
+  getRateLimitStatus,
+} from "../utils/index.js";
 
 // Retry configuration
 const RETRY_CONFIG = {
@@ -505,6 +512,63 @@ export class GitHubClient {
       });
       return [];
     }
+  }
+
+  /**
+   * Get current rate limit status from GitHub API
+   */
+  async getRateLimit(): Promise<{
+    limit: number;
+    remaining: number;
+    reset: Date;
+    used: number;
+  }> {
+    try {
+      const { data } = await this.octokit.rest.rateLimit.get();
+
+      const rateLimit = {
+        limit: data.rate.limit,
+        remaining: data.rate.remaining,
+        reset: new Date(data.rate.reset * 1000),
+        used: data.rate.used,
+      };
+
+      // Update the global rate limit tracker
+      updateRateLimit(rateLimit);
+
+      return rateLimit;
+    } catch (error) {
+      logger.warn("Failed to get rate limit", { error: String(error) });
+      // Return defaults if we can't get rate limit
+      return {
+        limit: 60,
+        remaining: 60,
+        reset: new Date(Date.now() + 3600000),
+        used: 0,
+      };
+    }
+  }
+
+  /**
+   * Check if it's safe to make API requests
+   */
+  checkRateLimit(): {
+    proceed: boolean;
+    reason?: string;
+    status: ReturnType<typeof getRateLimitStatus>;
+  } {
+    const check = shouldProceedWithRequest();
+    const status = getRateLimitStatus();
+
+    if (!check.proceed) {
+      logger.warn("Rate limit check failed", { reason: check.reason });
+    }
+
+    return {
+      proceed: check.proceed,
+      reason: check.reason,
+      status,
+    };
   }
 }
 

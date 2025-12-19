@@ -1,6 +1,7 @@
 import { config } from "./config.js";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
+type LogFormat = "text" | "json";
 
 const LOG_LEVELS: Record<LogLevel, number> = {
   debug: 0,
@@ -9,10 +10,40 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   error: 3,
 };
 
+interface LogEntry {
+  timestamp: string;
+  level: LogLevel;
+  message: string;
+  meta?: object;
+  service?: string;
+}
+
 class Logger {
   private level: LogLevel;
+  private format: LogFormat;
+  private service: string;
 
-  constructor(level: LogLevel = "info") {
+  constructor(
+    level: LogLevel = "info",
+    format: LogFormat = "text",
+    service: string = "midnight-mcp"
+  ) {
+    this.level = level;
+    this.format = format;
+    this.service = service;
+  }
+
+  /**
+   * Set log format at runtime
+   */
+  setFormat(format: LogFormat): void {
+    this.format = format;
+  }
+
+  /**
+   * Set log level at runtime
+   */
+  setLevel(level: LogLevel): void {
     this.level = level;
   }
 
@@ -20,10 +51,44 @@ class Logger {
     return LOG_LEVELS[level] >= LOG_LEVELS[this.level];
   }
 
-  private formatMessage(level: LogLevel, message: string, meta?: object): string {
+  private formatTextMessage(
+    level: LogLevel,
+    message: string,
+    meta?: object
+  ): string {
     const timestamp = new Date().toISOString();
     const metaStr = meta ? ` ${JSON.stringify(meta)}` : "";
     return `[${timestamp}] [${level.toUpperCase()}] ${message}${metaStr}`;
+  }
+
+  private formatJsonMessage(
+    level: LogLevel,
+    message: string,
+    meta?: object
+  ): string {
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      service: this.service,
+    };
+
+    if (meta) {
+      entry.meta = meta;
+    }
+
+    return JSON.stringify(entry);
+  }
+
+  private formatMessage(
+    level: LogLevel,
+    message: string,
+    meta?: object
+  ): string {
+    if (this.format === "json") {
+      return this.formatJsonMessage(level, message, meta);
+    }
+    return this.formatTextMessage(level, message, meta);
   }
 
   debug(message: string, meta?: object): void {
@@ -49,6 +114,46 @@ class Logger {
       console.error(this.formatMessage("error", message, meta));
     }
   }
+
+  /**
+   * Create a child logger with additional context
+   */
+  child(context: object): ChildLogger {
+    return new ChildLogger(this, context);
+  }
 }
 
-export const logger = new Logger(config.logLevel);
+/**
+ * Child logger that includes additional context in all log messages
+ */
+class ChildLogger {
+  private parent: Logger;
+  private context: object;
+
+  constructor(parent: Logger, context: object) {
+    this.parent = parent;
+    this.context = context;
+  }
+
+  debug(message: string, meta?: object): void {
+    this.parent.debug(message, { ...this.context, ...meta });
+  }
+
+  info(message: string, meta?: object): void {
+    this.parent.info(message, { ...this.context, ...meta });
+  }
+
+  warn(message: string, meta?: object): void {
+    this.parent.warn(message, { ...this.context, ...meta });
+  }
+
+  error(message: string, meta?: object): void {
+    this.parent.error(message, { ...this.context, ...meta });
+  }
+}
+
+// Determine log format from environment
+const logFormat: LogFormat =
+  process.env.LOG_FORMAT === "json" ? "json" : "text";
+
+export const logger = new Logger(config.logLevel, logFormat);
