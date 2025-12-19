@@ -1,4 +1,4 @@
-export { config } from "./config.js";
+export { config, isHostedMode, isLocalMode } from "./config.js";
 export type { Config, RepositoryConfig } from "./config.js";
 export { DEFAULT_REPOSITORIES } from "./config.js";
 export { logger } from "./logger.js";
@@ -48,3 +48,18 @@ export {
   pruneAllCaches,
 } from "./cache.js";
 export type { CacheOptions, CacheEntry, CacheStats } from "./cache.js";
+
+// Hosted API client
+export {
+  searchCompactHosted,
+  searchTypeScriptHosted,
+  searchDocsHosted,
+  searchHosted,
+  checkHostedApiHealth,
+  getHostedApiStats,
+} from "./hosted-api.js";
+export type {
+  HostedSearchResult,
+  HostedSearchResponse,
+  HostedSearchFilter,
+} from "./hosted-api.js";

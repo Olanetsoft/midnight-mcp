@@ -4,16 +4,22 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const ConfigSchema = z.object({
+  // Mode: 'hosted' (default) or 'local'
+  mode: z.enum(["hosted", "local"]).default("hosted"),
+
+  // Hosted API URL (used when mode is 'hosted')
+  hostedApiUrl: z.string().default("https://api.midnight-mcp.dev"),
+
   // GitHub
   githubToken: z.string().optional(),
 
-  // Vector Database
+  // Vector Database (only needed for local mode)
   chromaUrl: z.string().default("http://localhost:8000"),
   qdrantUrl: z.string().optional(),
   pineconeApiKey: z.string().optional(),
   pineconeIndex: z.string().optional(),
 
-  // Embeddings
+  // Embeddings (only needed for local mode)
   openaiApiKey: z.string().optional(),
   embeddingModel: z.string().default("text-embedding-3-small"),
 
@@ -30,7 +36,14 @@ const ConfigSchema = z.object({
 export type Config = z.infer<typeof ConfigSchema>;
 
 function loadConfig(): Config {
+  // Determine mode: local if MIDNIGHT_LOCAL=true or if OPENAI_API_KEY is set
+  const isLocalMode =
+    process.env.MIDNIGHT_LOCAL === "true" ||
+    (process.env.OPENAI_API_KEY && process.env.CHROMA_URL);
+
   const rawConfig = {
+    mode: isLocalMode ? "local" : "hosted",
+    hostedApiUrl: process.env.MIDNIGHT_API_URL,
     githubToken: process.env.GITHUB_TOKEN,
     chromaUrl: process.env.CHROMA_URL,
     qdrantUrl: process.env.QDRANT_URL,
@@ -56,6 +69,20 @@ function loadConfig(): Config {
 }
 
 export const config = loadConfig();
+
+/**
+ * Check if running in hosted mode (default)
+ */
+export function isHostedMode(): boolean {
+  return config.mode === "hosted";
+}
+
+/**
+ * Check if running in local mode
+ */
+export function isLocalMode(): boolean {
+  return config.mode === "local";
+}
 
 // Repository configuration
 export interface RepositoryConfig {

@@ -17,29 +17,22 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop. You can now use analysis tools, prompts, and access resources.
-
-> **Note:** Search features won't work well without the full setup below.
+Restart Claude Desktop. **That's it!** All features work out of the box—no API keys or setup required.
 
 ---
 
-## Full Setup (for search)
+## How It Works
 
-To enable semantic search across Midnight contracts and docs:
+By default, the MCP uses a **hosted API** for semantic search. This means:
 
-### 1. Start ChromaDB
+- ✅ **Zero configuration** — just install and use
+- ✅ **Semantic search** works immediately
+- ✅ **No API keys** needed from you
+- ✅ **Always up-to-date** index
 
-ChromaDB is a local vector database—no account needed, just Docker:
+### Optional: Local Mode
 
-```bash
-docker run -d -p 8000:8000 chromadb/chroma
-```
-
-### 2. Get an OpenAI API key
-
-Needed for generating embeddings. Get one at [platform.openai.com/api-keys](https://platform.openai.com/api-keys).
-
-### 3. Update your config
+For privacy or offline use, you can run everything locally:
 
 ```json
 {
@@ -48,6 +41,7 @@ Needed for generating embeddings. Get one at [platform.openai.com/api-keys](http
       "command": "npx",
       "args": ["-y", "midnight-mcp"],
       "env": {
+        "MIDNIGHT_LOCAL": "true",
         "OPENAI_API_KEY": "sk-...",
         "CHROMA_URL": "http://localhost:8000"
       }
@@ -56,15 +50,20 @@ Needed for generating embeddings. Get one at [platform.openai.com/api-keys](http
 }
 ```
 
-### Optional: GitHub token
+Local mode requires:
+1. **ChromaDB** running locally: `docker run -d -p 8000:8000 chromadb/chroma`
+2. **OpenAI API key** for embeddings
+3. Run indexing: `npx midnight-mcp index`
 
-Add `"GITHUB_TOKEN": "ghp_..."` to increase API rate limits from 60 to 5000 requests/hour.
+### Optional: GitHub Token
+
+Add `"GITHUB_TOKEN": "ghp_..."` for higher GitHub API rate limits (60 → 5000 requests/hour).
 
 ---
 
 ## What's Included
 
-### Tools (14 total)
+### Tools (16 total)
 
 | Tool                              | Description                             |
 | --------------------------------- | --------------------------------------- |
@@ -82,6 +81,8 @@ Add `"GITHUB_TOKEN": "ghp_..."` to increase API rate limits from 60 to 5000 requ
 | `midnight-get-file-at-version`    | Get file at specific version            |
 | `midnight-compare-syntax`         | Compare files between versions          |
 | `midnight-get-latest-syntax`      | Latest syntax reference                 |
+| `midnight-health-check`           | Check server health status              |
+| `midnight-get-status`             | Get rate limits and cache stats         |
 
 ### Resources (20 total)
 

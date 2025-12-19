@@ -6,6 +6,10 @@ import {
   validateNumber,
   searchCache,
   createCacheKey,
+  isHostedMode,
+  searchCompactHosted,
+  searchTypeScriptHosted,
+  searchDocsHosted,
 } from "../utils/index.js";
 
 // Schema definitions for tool inputs
@@ -78,7 +82,7 @@ export async function searchCompact(input: SearchCompactInput) {
 
   logger.debug("Searching Compact code", {
     query: sanitizedQuery,
-    originalQuery: input.query,
+    mode: isHostedMode() ? "hosted" : "local",
   });
 
   // Check cache first
@@ -94,6 +98,26 @@ export async function searchCompact(input: SearchCompactInput) {
     return cached;
   }
 
+  // Use hosted API if in hosted mode
+  if (isHostedMode()) {
+    try {
+      const response = await searchCompactHosted(sanitizedQuery, limit);
+      searchCache.set(cacheKey, response);
+      return {
+        ...response,
+        ...(queryValidation.warnings.length > 0 && {
+          warnings: queryValidation.warnings,
+        }),
+      };
+    } catch (error) {
+      logger.warn("Hosted API search failed, falling back to local", {
+        error: String(error),
+      });
+      // Fall through to local search
+    }
+  }
+
+  // Local search (fallback or when in local mode)
   const filter: SearchFilter = {
     language: "compact",
     ...input.filter,
@@ -148,7 +172,10 @@ export async function searchTypeScript(input: SearchTypeScriptInput) {
   const sanitizedQuery = queryValidation.sanitized;
   const limit = limitValidation.value;
 
-  logger.debug("Searching TypeScript code", { query: sanitizedQuery });
+  logger.debug("Searching TypeScript code", {
+    query: sanitizedQuery,
+    mode: isHostedMode() ? "hosted" : "local",
+  });
 
   // Check cache
   const cacheKey = createCacheKey(
@@ -164,6 +191,30 @@ export async function searchTypeScript(input: SearchTypeScriptInput) {
     return cached;
   }
 
+  // Use hosted API if in hosted mode
+  if (isHostedMode()) {
+    try {
+      const response = await searchTypeScriptHosted(
+        sanitizedQuery,
+        limit,
+        input.includeTypes
+      );
+      searchCache.set(cacheKey, response);
+      return {
+        ...response,
+        ...(queryValidation.warnings.length > 0 && {
+          warnings: queryValidation.warnings,
+        }),
+      };
+    } catch (error) {
+      logger.warn("Hosted API search failed, falling back to local", {
+        error: String(error),
+      });
+      // Fall through to local search
+    }
+  }
+
+  // Local search (fallback or when in local mode)
   const filter: SearchFilter = {
     language: "typescript",
   };
@@ -225,7 +276,10 @@ export async function searchDocs(input: SearchDocsInput) {
   const sanitizedQuery = queryValidation.sanitized;
   const limit = limitValidation.value;
 
-  logger.debug("Searching documentation", { query: sanitizedQuery });
+  logger.debug("Searching documentation", {
+    query: sanitizedQuery,
+    mode: isHostedMode() ? "hosted" : "local",
+  });
 
   // Check cache
   const cacheKey = createCacheKey(
@@ -240,6 +294,30 @@ export async function searchDocs(input: SearchDocsInput) {
     return cached;
   }
 
+  // Use hosted API if in hosted mode
+  if (isHostedMode()) {
+    try {
+      const response = await searchDocsHosted(
+        sanitizedQuery,
+        limit,
+        input.category
+      );
+      searchCache.set(cacheKey, response);
+      return {
+        ...response,
+        ...(queryValidation.warnings.length > 0 && {
+          warnings: queryValidation.warnings,
+        }),
+      };
+    } catch (error) {
+      logger.warn("Hosted API search failed, falling back to local", {
+        error: String(error),
+      });
+      // Fall through to local search
+    }
+  }
+
+  // Local search (fallback or when in local mode)
   const filter: SearchFilter = {
     language: "markdown",
   };
