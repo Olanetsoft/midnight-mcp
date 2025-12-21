@@ -4,19 +4,11 @@ export {
   listDocumentationResources,
 } from "./docs.js";
 
-export {
-  codeResources,
-  getCode,
-  listCodeResources,
-} from "./code.js";
+export { codeResources, getCode, listCodeResources } from "./code.js";
 
-export {
-  schemaResources,
-  getSchema,
-  listSchemaResources,
-} from "./schemas.js";
+export { schemaResources, getSchema, listSchemaResources } from "./schemas.js";
 
-export type { ResourceDefinition } from "./docs.js";
+export type { ResourceDefinition } from "./schemas.js";
 
 // Combine all resources
 import { documentationResources } from "./docs.js";

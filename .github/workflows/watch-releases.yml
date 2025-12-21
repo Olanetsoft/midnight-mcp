@@ -62,23 +62,44 @@ jobs:
             echo "✅ No new releases, skipping reindex"
           fi
 
-  trigger-reindex:
+  # Run indexing directly if new releases detected
+  reindex:
     needs: check-releases
     if: needs.check-releases.outputs.should_reindex == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: CLOUDFLARE
 
     # Prevent concurrent indexing runs
     concurrency:
       group: midnight-indexing
-      cancel-in-progress: false # Don't cancel running jobs, just skip new ones
+      cancel-in-progress: false
 
     steps:
-      - name: Trigger indexing workflow
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: api
+        run: npm ci
+
+      - name: Run indexing
+        working-directory: api
         env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run index
+
+      - name: Summary
+        if: always()
         run: |
-          echo "Triggering reindex..."
-          gh api repos/${{ github.repository }}/dispatches \
-            -f event_type=reindex \
-            --method POST
-          echo "✅ Reindex triggered"
+          echo "## 🔄 Release-Triggered Reindex" >> \$GITHUB_STEP_SUMMARY
+          echo "Triggered by new Midnight releases/commits" >> \$GITHUB_STEP_SUMMARY
