@@ -304,7 +304,7 @@ async function getRepoFilesFast(
         stream.resume();
         return;
       }
-      
+
       const pathParts = fullPath.split("/");
       pathParts.shift(); // Remove first segment (repo-branch)
       const relativePath = pathParts.join("/");
