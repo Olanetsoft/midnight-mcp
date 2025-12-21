@@ -392,176 +392,163 @@ app.get("/dashboard", async (c) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Midnight MCP Dashboard</title>
+  <title>MCP Analytics</title>
   <style>
+    :root { --bg: #111; --card: #1c1c1c; --border: #333; --text: #eee; --muted: #888; --accent: #6366f1; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e0e0e0; padding: 20px; }
-    .container { max-width: 1200px; margin: 0 auto; }
-    h1 { color: #8b5cf6; margin-bottom: 20px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
-    .card { background: #1a1a2e; border-radius: 12px; padding: 20px; border: 1px solid #2a2a4e; }
-    .card h3 { color: #a78bfa; margin-bottom: 15px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
-    .stat { font-size: 36px; font-weight: bold; color: #fff; }
-    .stat-label { color: #888; font-size: 14px; margin-top: 5px; }
-    .bar-chart { margin-top: 10px; }
-    .bar { display: flex; align-items: center; margin: 8px 0; }
-    .bar-label { width: 100px; font-size: 13px; color: #aaa; }
-    .bar-track { flex: 1; height: 24px; background: #2a2a4e; border-radius: 4px; overflow: hidden; }
-    .bar-fill { height: 100%; background: linear-gradient(90deg, #8b5cf6, #a78bfa); display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 12px; min-width: 30px; }
-    .quality-meter { display: flex; gap: 10px; margin-top: 15px; }
-    .quality-segment { flex: 1; text-align: center; padding: 10px; border-radius: 8px; }
-    .quality-segment.high { background: #065f46; }
-    .quality-segment.medium { background: #854d0e; }
-    .quality-segment.low { background: #7f1d1d; }
-    .quality-segment .count { font-size: 24px; font-weight: bold; }
-    .quality-segment .label { font-size: 11px; color: #aaa; margin-top: 4px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #2a2a4e; }
-    th { color: #888; font-size: 12px; text-transform: uppercase; }
-    td { font-size: 14px; }
-    .score { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
-    .score.high { background: #065f46; color: #34d399; }
-    .score.medium { background: #854d0e; color: #fbbf24; }
-    .score.low { background: #7f1d1d; color: #f87171; }
-    .refresh-btn { background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
-    .refresh-btn:hover { background: #7c3aed; }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 10px; }
-    .time { color: #666; font-size: 13px; }
-    .empty { color: #666; text-align: center; padding: 40px; }
+    body { font-family: 'Inter', -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 24px; line-height: 1.5; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 20px; font-weight: 600; }
+    header span { color: var(--muted); font-size: 13px; }
+    .btn { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: background .15s; }
+    .btn:hover { background: #252525; }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .metric { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+    .metric-value { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .metric-label { color: var(--muted); font-size: 12px; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+    .card-title { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .bar-row { display: flex; align-items: center; margin-bottom: 10px; }
+    .bar-name { width: 90px; font-size: 13px; color: var(--muted); flex-shrink: 0; }
+    .bar-track { flex: 1; height: 8px; background: #252525; border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s; }
+    .bar-val { width: 40px; text-align: right; font-size: 13px; font-weight: 500; margin-left: 12px; }
+    .quality { display: flex; gap: 12px; }
+    .q-box { flex: 1; text-align: center; padding: 16px 8px; border-radius: 6px; }
+    .q-box.high { background: rgba(34,197,94,.15); color: #22c55e; }
+    .q-box.med { background: rgba(234,179,8,.15); color: #eab308; }
+    .q-box.low { background: rgba(239,68,68,.15); color: #ef4444; }
+    .q-num { font-size: 28px; font-weight: 700; }
+    .q-label { font-size: 11px; margin-top: 4px; opacity: .8; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px 12px; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { padding: 10px 12px; border-bottom: 1px solid #222; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+    .tag.high { background: rgba(34,197,94,.2); color: #22c55e; }
+    .tag.med { background: rgba(234,179,8,.2); color: #eab308; }
+    .tag.low { background: rgba(239,68,68,.2); color: #ef4444; }
+    .empty { color: var(--muted); text-align: center; padding: 32px; font-size: 14px; }
+    .full-width { grid-column: 1 / -1; }
+    @media (max-width: 768px) { .metrics, .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1>🌙 Midnight MCP Dashboard</h1>
+    <header>
+      <h1>MCP Analytics</h1>
       <div>
-        <span class="time">Last updated: ${metrics.lastUpdated ? new Date(metrics.lastUpdated).toLocaleString() : "Never"}</span>
-        <button class="refresh-btn" onclick="location.reload()">Refresh</button>
+        <span>${metrics.lastUpdated ? new Date(metrics.lastUpdated).toLocaleString() : "—"}</span>
+        <button class="btn" onclick="location.reload()" style="margin-left: 12px">Refresh</button>
       </div>
-    </div>
+    </header>
     
     ${
       metrics.totalQueries === 0
-        ? '<div class="card"><p class="empty">No queries yet. Start using the MCP to see metrics!</p></div>'
+        ? '<div class="card"><p class="empty">No queries yet</p></div>'
         : `
-    <div class="grid">
-      <div class="card">
-        <h3>Total Queries</h3>
-        <div class="stat">${metrics.totalQueries.toLocaleString()}</div>
-        <div class="stat-label">All time searches</div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-value">${metrics.totalQueries.toLocaleString()}</div>
+        <div class="metric-label">Total Queries</div>
       </div>
-      
-      <div class="card">
-        <h3>Avg Relevance Score</h3>
-        <div class="stat">${(metrics.avgRelevanceScore * 100).toFixed(1)}%</div>
-        <div class="stat-label">Higher is better (similarity match)</div>
+      <div class="metric">
+        <div class="metric-value">${(metrics.avgRelevanceScore * 100).toFixed(1)}%</div>
+        <div class="metric-label">Avg Relevance</div>
       </div>
-      
-      <div class="card">
-        <h3>Quality Score</h3>
-        <div class="stat">${qualityScore}%</div>
-        <div class="stat-label">% of queries with good results</div>
+      <div class="metric">
+        <div class="metric-value">${qualityScore}%</div>
+        <div class="metric-label">Quality Score</div>
       </div>
     </div>
     
     <div class="grid">
       <div class="card">
-        <h3>Queries by Endpoint</h3>
-        <div class="bar-chart">
-          ${
-            Object.entries(metrics.queriesByEndpoint).length === 0
-              ? '<p class="empty">No data</p>'
-              : Object.entries(metrics.queriesByEndpoint)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([endpoint, count]) => {
-                    const pct =
-                      metrics.totalQueries > 0
-                        ? (count / metrics.totalQueries) * 100
-                        : 0;
-                    return (
-                      '<div class="bar"><span class="bar-label">' +
-                      endpoint +
-                      '</span><div class="bar-track"><div class="bar-fill" style="width: ' +
-                      pct +
-                      '%">' +
-                      count +
-                      "</div></div></div>"
-                    );
-                  })
-                  .join("")
-          }
+        <div class="card-title">By Endpoint</div>
+        ${
+          Object.entries(metrics.queriesByEndpoint).length === 0
+            ? '<p class="empty">—</p>'
+            : Object.entries(metrics.queriesByEndpoint)
+                .sort((a, b) => b[1] - a[1])
+                .map(([ep, cnt]) => {
+                  const pct =
+                    metrics.totalQueries > 0
+                      ? (cnt / metrics.totalQueries) * 100
+                      : 0;
+                  return (
+                    '<div class="bar-row"><span class="bar-name">' +
+                    ep +
+                    '</span><div class="bar-track"><div class="bar-fill" style="width:' +
+                    pct +
+                    '%"></div></div><span class="bar-val">' +
+                    cnt +
+                    "</span></div>"
+                  );
+                })
+                .join("")
+        }
+      </div>
+      
+      <div class="card">
+        <div class="card-title">By Language</div>
+        ${
+          Object.entries(metrics.queriesByLanguage).length === 0
+            ? '<p class="empty">—</p>'
+            : Object.entries(metrics.queriesByLanguage)
+                .sort((a, b) => b[1] - a[1])
+                .map(([lang, cnt]) => {
+                  const pct =
+                    metrics.totalQueries > 0
+                      ? (cnt / metrics.totalQueries) * 100
+                      : 0;
+                  return (
+                    '<div class="bar-row"><span class="bar-name">' +
+                    lang +
+                    '</span><div class="bar-track"><div class="bar-fill" style="width:' +
+                    pct +
+                    '%"></div></div><span class="bar-val">' +
+                    cnt +
+                    "</span></div>"
+                  );
+                })
+                .join("")
+        }
+      </div>
+      
+      <div class="card">
+        <div class="card-title">Quality Distribution</div>
+        <div class="quality">
+          <div class="q-box high"><div class="q-num">${metrics.scoreDistribution.high}</div><div class="q-label">High</div></div>
+          <div class="q-box med"><div class="q-num">${metrics.scoreDistribution.medium}</div><div class="q-label">Medium</div></div>
+          <div class="q-box low"><div class="q-num">${metrics.scoreDistribution.low}</div><div class="q-label">Low</div></div>
         </div>
       </div>
       
       <div class="card">
-        <h3>Queries by Language</h3>
-        <div class="bar-chart">
-          ${
-            Object.entries(metrics.queriesByLanguage).length === 0
-              ? '<p class="empty">No data</p>'
-              : Object.entries(metrics.queriesByLanguage)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([lang, count]) => {
-                    const pct =
-                      metrics.totalQueries > 0
-                        ? (count / metrics.totalQueries) * 100
-                        : 0;
-                    return (
-                      '<div class="bar"><span class="bar-label">' +
-                      lang +
-                      '</span><div class="bar-track"><div class="bar-fill" style="width: ' +
-                      pct +
-                      '%">' +
-                      count +
-                      "</div></div></div>"
-                    );
-                  })
-                  .join("")
-          }
-        </div>
-      </div>
-      
-      <div class="card">
-        <h3>Result Quality Distribution</h3>
-        <div class="quality-meter">
-          <div class="quality-segment high">
-            <div class="count">${metrics.scoreDistribution.high}</div>
-            <div class="label">HIGH (&gt;80%)</div>
-          </div>
-          <div class="quality-segment medium">
-            <div class="count">${metrics.scoreDistribution.medium}</div>
-            <div class="label">MEDIUM (50-80%)</div>
-          </div>
-          <div class="quality-segment low">
-            <div class="count">${metrics.scoreDistribution.low}</div>
-            <div class="label">LOW (&lt;50%)</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="card">
-      <h3>Document Hits by Repository</h3>
-      <div class="bar-chart">
+        <div class="card-title">Top Repositories</div>
         ${
           Object.entries(metrics.documentsByRepo).length === 0
-            ? '<p class="empty">No data</p>'
+            ? '<p class="empty">—</p>'
             : Object.entries(metrics.documentsByRepo)
                 .sort((a, b) => b[1] - a[1])
-                .slice(0, 10)
-                .map(([repo, count]) => {
-                  const maxCount = Math.max(
+                .slice(0, 5)
+                .map(([repo, cnt]) => {
+                  const max = Math.max(
                     ...Object.values(metrics.documentsByRepo)
                   );
-                  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                  const pct = max > 0 ? (cnt / max) * 100 : 0;
+                  const name = repo.split("/").pop();
                   return (
-                    '<div class="bar"><span class="bar-label" style="width: 200px">' +
+                    '<div class="bar-row"><span class="bar-name" title="' +
                     repo +
-                    '</span><div class="bar-track"><div class="bar-fill" style="width: ' +
+                    '">' +
+                    name +
+                    '</span><div class="bar-track"><div class="bar-fill" style="width:' +
                     pct +
-                    '%">' +
-                    count +
-                    "</div></div></div>"
+                    '%"></div></div><span class="bar-val">' +
+                    cnt +
+                    "</span></div>"
                   );
                 })
                 .join("")
@@ -569,39 +556,31 @@ app.get("/dashboard", async (c) => {
       </div>
     </div>
     
-    <div class="card" style="margin-top: 20px">
-      <h3>Recent Queries (Last 20)</h3>
+    <div class="card">
+      <div class="card-title">Recent Queries</div>
       <table>
-        <thead>
-          <tr>
-            <th>Query</th>
-            <th>Endpoint</th>
-            <th>Results</th>
-            <th>Top Score</th>
-            <th>Time</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Query</th><th>Type</th><th>Results</th><th>Score</th><th>Time</th></tr></thead>
         <tbody>
           ${metrics.recentQueries
-            .slice(0, 20)
+            .slice(0, 15)
             .map(
               (q) =>
-                "<tr><td>" +
+                '<tr><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
                 q.query +
                 "</td><td>" +
                 q.endpoint +
                 "</td><td>" +
                 q.resultsCount +
-                '</td><td><span class="score ' +
+                '</td><td><span class="tag ' +
                 (q.topScore > 0.8
                   ? "high"
                   : q.topScore >= 0.5
-                    ? "medium"
+                    ? "med"
                     : "low") +
                 '">' +
                 (q.topScore * 100).toFixed(0) +
-                '%</span></td><td style="color: #666">' +
-                new Date(q.timestamp).toLocaleString() +
+                '%</span></td><td style="color:var(--muted)">' +
+                new Date(q.timestamp).toLocaleTimeString() +
                 "</td></tr>"
             )
             .join("")}
