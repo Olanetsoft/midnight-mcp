@@ -192,7 +192,9 @@ The hosted API runs on Cloudflare Workers + Vectorize. See [api/README.md](./api
 
 ### Search Quality
 
-The API uses several techniques to improve search relevance:
+The API indexes **25 Midnight repositories** including core infrastructure, SDK, examples, ZK libraries, and developer tools.
+
+Search quality techniques:
 
 - **Optimized chunking** — 1000-char chunks with 200-char overlap for precise, contextual results
 - **Hybrid search** — Combines vector similarity with keyword boosting (up to 20% boost for exact matches)

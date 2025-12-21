@@ -98,7 +98,14 @@ npm run deploy
 
 ## Indexing
 
-The indexing process downloads all Midnight repositories and indexes them into Cloudflare Vectorize.
+The indexing process downloads **25 Midnight repositories** and indexes them into Cloudflare Vectorize:
+
+- Core: `compact`, `midnight-js`, `midnight-wallet`, `midnight-node`, `midnight-ledger`, `midnight-zk`
+- ZK/Crypto: `halo2`, `midnight-trusted-setup`, `rs-merkle`
+- Examples: `example-counter`, `example-bboard`, `example-dex`
+- Tools: `compact-tree-sitter`, `create-mn-app`, `setup-compact-action`
+- Docs: `midnight-docs`, `midnight-improvement-proposals`
+- And more...
 
 ### Features
 
