@@ -18,6 +18,7 @@ jobs:
   index:
     runs-on: ubuntu-latest
     timeout-minutes: 60 # Prevent runaway jobs
+    environment: CLOUDFLARE  # Use the CLOUDFLARE environment for secrets
 
     steps:
       - uses: actions/checkout@v4
