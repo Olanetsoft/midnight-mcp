@@ -26,7 +26,7 @@ Add to your `claude_desktop_config.json`:
 ```
 
 <details>
-<summary><strong>📍 Config file locations</strong></summary>
+<summary><strong>Config file locations</strong></summary>
 
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
@@ -87,11 +87,11 @@ Restart your editor after adding the config. All features work out of the box—
 
 By default, the MCP uses a **hosted API** for semantic search:
 
-- ✅ **Zero configuration** — just install and use
-- ✅ **Semantic search** works immediately
-- ✅ **No API keys** needed
+- **Zero configuration** — just install and use
+- **Semantic search** works immediately
+- **No API keys** needed
 
-> **📊 Quality Metrics**: To ensure the MCP stays accurate as Midnight's codebase evolves rapidly, we collect anonymous usage metrics (query counts, relevance scores) to monitor search quality. No query content or personal data is stored. This helps us identify when re-indexing is needed and improve results over time.
+> **Quality Metrics**: To ensure the MCP stays accurate as Midnight's codebase evolves rapidly, we collect anonymous usage metrics (query counts, relevance scores) to monitor search quality. No query content or personal data is stored. This helps us identify when re-indexing is needed and improve results over time.
 
 ### Local Mode (Optional)
 
@@ -143,11 +143,11 @@ Add `"GITHUB_TOKEN": "ghp_..."` for higher GitHub API rate limits (60 → 5000 r
 | `midnight-get-latest-syntax`      | Latest syntax reference                     |
 | `midnight-health-check`           | Check server health status                  |
 | `midnight-get-status`             | Get rate limits and cache stats             |
-| `midnight-generate-contract` ✨   | AI-generate contracts from natural language |
-| `midnight-review-contract` ✨     | AI-powered security review of contracts     |
-| `midnight-document-contract` ✨   | AI-generate documentation for contracts     |
+| `midnight-generate-contract`      | AI-generate contracts from natural language |
+| `midnight-review-contract`        | AI-powered security review of contracts     |
+| `midnight-document-contract`      | AI-generate documentation for contracts     |
 
-> **✨ New AI-Powered Tools** require a client with [MCP Sampling](https://spec.modelcontextprotocol.io/specification/client/sampling/) support (e.g., Claude Desktop). Without sampling, these tools will return a helpful message instead.
+> **Note:** The AI-powered tools require a client with [MCP Sampling](https://spec.modelcontextprotocol.io/specification/client/sampling/) support (e.g., Claude Desktop). Without sampling, these tools will return a helpful message instead.
 
 ### Resource Templates (4)
 
