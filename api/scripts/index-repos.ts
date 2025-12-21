@@ -190,8 +190,13 @@ const SKIP_DIRS = new Set([
 
 // ============== KV CACHE FOR INCREMENTAL INDEXING ==============
 
+interface FileCacheEntry {
+  hash: string;
+  vectorIds: string[]; // Track vector IDs for cleanup
+}
+
 interface FileCache {
-  [filePath: string]: string; // path -> content hash
+  [filePath: string]: FileCacheEntry;
 }
 
 async function getFileCache(repoKey: string): Promise<FileCache> {
@@ -225,7 +230,32 @@ function hashContent(content: string): string {
   return createHash("sha256").update(content).digest("hex").substring(0, 16);
 }
 
-// ============== TARBALL DOWNLOAD (FAST!) ==============
+// ============== VECTOR CLEANUP ==============
+
+async function deleteVectors(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+
+  const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/vectorize/v2/indexes/${VECTORIZE_INDEX}/delete_by_ids`;
+
+  // Delete in batches of 100
+  for (let i = 0; i < ids.length; i += 100) {
+    const batch = ids.slice(i, i + 100);
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${CLOUDFLARE_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ids: batch }),
+    });
+
+    if (!response.ok) {
+      console.warn(`  ⚠️ Failed to delete vectors: ${response.status}`);
+    }
+  }
+}
+
+// ============== TARBALL DOWNLOAD (FAST!) ==
 
 async function getRepoFilesFast(
   owner: string,
@@ -289,12 +319,14 @@ async function getRepoFilesFast(
           const contentHash = hashContent(content);
 
           // Check if file changed (incremental indexing)
-          if (existingCache[relativePath] === contentHash) {
+          const existing = existingCache[relativePath];
+          if (existing && existing.hash === contentHash) {
             skipped++;
-            newCache[relativePath] = contentHash; // Keep in cache
+            newCache[relativePath] = existing; // Keep existing entry with vector IDs
           } else {
             entries.push({ path: relativePath, content });
-            newCache[relativePath] = contentHash;
+            // Will be filled in after vectorization
+            newCache[relativePath] = { hash: contentHash, vectorIds: [] };
           }
           next();
         });
@@ -424,13 +456,45 @@ async function indexRepository(owner: string, repo: string, branch: string) {
     existingCache
   );
 
-  if (files.length === 0) {
-    console.log(`  ⏭️  No changed files, skipping`);
-    return { success: true, documents: 0, skipped };
+  // Find deleted files and their vector IDs to clean up
+  const currentFilePaths = new Set(Object.keys(newCache));
+  const deletedVectorIds: string[] = [];
+  for (const [filePath, entry] of Object.entries(existingCache)) {
+    if (!currentFilePaths.has(filePath) && entry.vectorIds) {
+      deletedVectorIds.push(...entry.vectorIds);
+    }
   }
 
-  // Create document chunks
+  // Also collect vector IDs from changed files (will be replaced)
+  for (const file of files) {
+    const existing = existingCache[file.path];
+    if (existing && existing.vectorIds) {
+      deletedVectorIds.push(...existing.vectorIds);
+    }
+  }
+
+  if (deletedVectorIds.length > 0) {
+    console.log(
+      `  🗑️  Cleaning up ${deletedVectorIds.length} stale vectors...`
+    );
+    await deleteVectors(deletedVectorIds);
+  }
+
+  if (files.length === 0) {
+    // Still need to save cache to reflect deleted files
+    await setFileCache(repoKey, newCache);
+    console.log(`  ⏭️  No changed files, skipping`);
+    return {
+      success: true,
+      documents: 0,
+      skipped,
+      deleted: deletedVectorIds.length,
+    };
+  }
+
+  // Create document chunks and track vector IDs per file
   const documents: Document[] = [];
+  const fileVectorIds: Map<string, string[]> = new Map();
   let docCounter = 0;
 
   for (const file of files) {
@@ -438,9 +502,11 @@ async function indexRepository(owner: string, repo: string, branch: string) {
     const language = EXTENSIONS[ext] || "unknown";
 
     const chunks = chunkContent(file.content);
+    const vectorIds: string[] = [];
 
     for (let i = 0; i < chunks.length; i++) {
       const shortId = `${repo.substring(0, 10)}-${docCounter++}`;
+      vectorIds.push(shortId);
       documents.push({
         id: shortId,
         content: chunks[i],
@@ -454,6 +520,8 @@ async function indexRepository(owner: string, repo: string, branch: string) {
         },
       });
     }
+
+    fileVectorIds.set(file.path, vectorIds);
   }
 
   console.log(
@@ -497,10 +565,20 @@ async function indexRepository(owner: string, repo: string, branch: string) {
 
   console.log(`\r  ✅ Indexed ${totalProcessed} documents                    `);
 
-  // Update cache for next run
+  // Update cache with vector IDs for cleanup on next run
+  fileVectorIds.forEach((vectorIds, filePath) => {
+    if (newCache[filePath]) {
+      newCache[filePath].vectorIds = vectorIds;
+    }
+  });
   await setFileCache(repoKey, newCache);
 
-  return { success: true, documents: documents.length, skipped };
+  return {
+    success: true,
+    documents: documents.length,
+    skipped,
+    deleted: deletedVectorIds.length,
+  };
 }
 
 interface IndexResult {
@@ -508,6 +586,7 @@ interface IndexResult {
   success: boolean;
   documents: number;
   skipped: number;
+  deleted: number;
   error?: string;
 }
 
@@ -524,6 +603,7 @@ async function main() {
   const results: IndexResult[] = [];
   let totalDocs = 0;
   let totalSkipped = 0;
+  let totalDeleted = 0;
   let failedRepos: string[] = [];
 
   for (const { owner, repo, branch } of REPOSITORIES) {
@@ -535,9 +615,11 @@ async function main() {
         success: true,
         documents: result.documents,
         skipped: result.skipped,
+        deleted: result.deleted,
       });
       totalDocs += result.documents;
       totalSkipped += result.skipped;
+      totalDeleted += result.deleted;
 
       // Small delay between repos
       await sleep(2000);
@@ -549,6 +631,7 @@ async function main() {
         success: false,
         documents: 0,
         skipped: 0,
+        deleted: 0,
         error: errorMsg,
       });
       failedRepos.push(repoName);
@@ -564,9 +647,11 @@ async function main() {
     const status = result.success ? "✅" : "❌";
     if (result.success) {
       const skipInfo =
-        result.skipped > 0 ? ` (${result.skipped} unchanged)` : "";
+        result.skipped > 0 ? `, ${result.skipped} unchanged` : "";
+      const deleteInfo =
+        result.deleted > 0 ? `, ${result.deleted} cleaned` : "";
       console.log(
-        `${status} ${result.repo}: ${result.documents} docs${skipInfo}`
+        `${status} ${result.repo}: ${result.documents} docs${skipInfo}${deleteInfo}`
       );
     } else {
       console.log(
@@ -578,6 +663,7 @@ async function main() {
   console.log("-".repeat(50));
   console.log(`📄 Total documents indexed: ${totalDocs}`);
   console.log(`⏭️  Total files skipped (unchanged): ${totalSkipped}`);
+  console.log(`🗑️  Total stale vectors deleted: ${totalDeleted}`);
   console.log(
     `✅ Successful repos: ${results.filter((r) => r.success).length}/${REPOSITORIES.length}`
   );
