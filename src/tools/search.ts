@@ -12,6 +12,132 @@ import {
   searchDocsHosted,
 } from "../utils/index.js";
 
+// ============================================================================
+// Common Search Infrastructure
+// ============================================================================
+
+interface SearchContext {
+  sanitizedQuery: string;
+  limit: number;
+  warnings: string[];
+}
+
+type SearchValidationResult =
+  | {
+      success: true;
+      context: SearchContext;
+    }
+  | {
+      success: false;
+      error: {
+        error: string;
+        details: string[];
+        suggestion: string;
+      };
+    };
+
+/**
+ * Validate and prepare common search parameters
+ * Extracts common validation logic used by all search functions
+ */
+function validateSearchInput(
+  query: string,
+  limit: number | undefined
+): SearchValidationResult {
+  const queryValidation = validateQuery(query);
+  if (!queryValidation.isValid) {
+    return {
+      success: false,
+      error: {
+        error: "Invalid query",
+        details: queryValidation.errors,
+        suggestion: "Provide a valid search query with at least 2 characters",
+      },
+    };
+  }
+
+  const limitValidation = validateNumber(limit, {
+    min: 1,
+    max: 50,
+    defaultValue: 10,
+  });
+
+  return {
+    success: true,
+    context: {
+      sanitizedQuery: queryValidation.sanitized,
+      limit: limitValidation.value,
+      warnings: queryValidation.warnings,
+    },
+  };
+}
+
+/**
+ * Check cache for existing search results
+ */
+function checkSearchCache<T>(cacheKey: string): T | null {
+  const cached = searchCache.get(cacheKey);
+  if (cached) {
+    logger.debug("Search cache hit", { cacheKey });
+    return cached as T;
+  }
+  return null;
+}
+
+/**
+ * Execute hosted search with fallback handling
+ */
+async function tryHostedSearch<T>(
+  searchType: string,
+  hostedSearchFn: () => Promise<T>,
+  cacheKey: string,
+  warnings: string[]
+): Promise<{ result: T; cached: boolean } | null> {
+  if (!isHostedMode()) {
+    return null;
+  }
+
+  try {
+    const response = await hostedSearchFn();
+    searchCache.set(cacheKey, response);
+    return {
+      result: {
+        ...response,
+        ...(warnings.length > 0 && { warnings }),
+      } as T,
+      cached: true,
+    };
+  } catch (error) {
+    logger.warn(
+      `Hosted API ${searchType} search failed, falling back to local`,
+      {
+        error: String(error),
+      }
+    );
+    return null;
+  }
+}
+
+/**
+ * Add warnings to response and cache it
+ */
+function finalizeResponse<T extends object>(
+  response: T,
+  cacheKey: string,
+  warnings: string[]
+): T {
+  const finalResponse = {
+    ...response,
+    ...(warnings.length > 0 && { warnings }),
+  };
+  searchCache.set(cacheKey, finalResponse);
+  return finalResponse;
+}
+
+// ============================================================================
+// Schema Definitions
+// ============================================================================
+
 // Schema definitions for tool inputs
 export const SearchCompactInputSchema = z.object({
   query: z.string().describe("Natural language search query for Compact code"),
@@ -62,23 +188,12 @@ export type SearchDocsInput = z.infer<typeof SearchDocsInputSchema>;
  * Search Compact smart contract code and patterns
  */
 export async function searchCompact(input: SearchCompactInput) {
-  // Validate input
-  const queryValidation = validateQuery(input.query);
-  if (!queryValidation.isValid) {
-    return {
-      error: "Invalid query",
-      details: queryValidation.errors,
-      suggestion: "Provide a valid search query with at least 2 characters",
-    };
+  // Validate input using common helper
+  const validation = validateSearchInput(input.query, input.limit);
+  if (!validation.success) {
+    return validation.error;
   }
-
-  const limitValidation = validateNumber(input.limit, {
-    min: 1,
-    max: 50,
-    defaultValue: 10,
-  });
-  const sanitizedQuery = queryValidation.sanitized;
-  const limit = limitValidation.value;
+  const { sanitizedQuery, limit, warnings } = validation.context;
 
   logger.debug("Searching Compact code", {
     query: sanitizedQuery,
@@ -92,30 +207,17 @@ export async function searchCompact(input: SearchCompactInput) {
     limit,
     input.filter?.repository
   );
-  const cached = searchCache.get(cacheKey);
-  if (cached) {
-    logger.debug("Search cache hit", { cacheKey });
-    return cached;
-  }
+  const cached = checkSearchCache(cacheKey);
+  if (cached) return cached;
 
-  // Use hosted API if in hosted mode
-  if (isHostedMode()) {
-    try {
-      const response = await searchCompactHosted(sanitizedQuery, limit);
-      searchCache.set(cacheKey, response);
-      return {
-        ...response,
-        ...(queryValidation.warnings.length > 0 && {
-          warnings: queryValidation.warnings,
-        }),
-      };
-    } catch (error) {
-      logger.warn("Hosted API search failed, falling back to local", {
-        error: String(error),
-      });
-      // Fall through to local search
-    }
-  }
+  // Try hosted API first
+  const hostedResult = await tryHostedSearch(
+    "compact",
+    () => searchCompactHosted(sanitizedQuery, limit),
+    cacheKey,
+    warnings
+  );
+  if (hostedResult) return hostedResult.result;
 
   // Local search (fallback or when in local mode)
   const filter: SearchFilter = {
@@ -139,38 +241,21 @@ export async function searchCompact(input: SearchCompactInput) {
     })),
     totalResults: results.length,
     query: sanitizedQuery,
-    ...(queryValidation.warnings.length > 0 && {
-      warnings: queryValidation.warnings,
-    }),
   };
 
-  // Cache the response
-  searchCache.set(cacheKey, response);
-
-  return response;
+  return finalizeResponse(response, cacheKey, warnings);
 }
 
 /**
  * Search TypeScript SDK code, types, and API implementations
  */
 export async function searchTypeScript(input: SearchTypeScriptInput) {
-  // Validate input
-  const queryValidation = validateQuery(input.query);
-  if (!queryValidation.isValid) {
-    return {
-      error: "Invalid query",
-      details: queryValidation.errors,
-      suggestion: "Provide a valid search query with at least 2 characters",
-    };
+  // Validate input using common helper
+  const validation = validateSearchInput(input.query, input.limit);
+  if (!validation.success) {
+    return validation.error;
   }
-
-  const limitValidation = validateNumber(input.limit, {
-    min: 1,
-    max: 50,
-    defaultValue: 10,
-  });
-  const sanitizedQuery = queryValidation.sanitized;
-  const limit = limitValidation.value;
+  const { sanitizedQuery, limit, warnings } = validation.context;
 
   logger.debug("Searching TypeScript code", {
     query: sanitizedQuery,
@@ -185,34 +270,17 @@ export async function searchTypeScript(input: SearchTypeScriptInput) {
     input.includeTypes,
     input.includeExamples
   );
-  const cached = searchCache.get(cacheKey);
-  if (cached) {
-    logger.debug("Search cache hit", { cacheKey });
-    return cached;
-  }
+  const cached = checkSearchCache(cacheKey);
+  if (cached) return cached;
 
-  // Use hosted API if in hosted mode
-  if (isHostedMode()) {
-    try {
-      const response = await searchTypeScriptHosted(
-        sanitizedQuery,
-        limit,
-        input.includeTypes
-      );
-      searchCache.set(cacheKey, response);
-      return {
-        ...response,
-        ...(queryValidation.warnings.length > 0 && {
-          warnings: queryValidation.warnings,
-        }),
-      };
-    } catch (error) {
-      logger.warn("Hosted API search failed, falling back to local", {
-        error: String(error),
-      });
-      // Fall through to local search
-    }
-  }
+  // Try hosted API first
+  const hostedResult = await tryHostedSearch(
+    "typescript",
+    () => searchTypeScriptHosted(sanitizedQuery, limit, input.includeTypes),
+    cacheKey,
+    warnings
+  );
+  if (hostedResult) return hostedResult.result;
 
   // Local search (fallback or when in local mode)
   const filter: SearchFilter = {
@@ -245,36 +313,21 @@ export async function searchTypeScript(input: SearchTypeScriptInput) {
     })),
     totalResults: filteredResults.length,
     query: sanitizedQuery,
-    ...(queryValidation.warnings.length > 0 && {
-      warnings: queryValidation.warnings,
-    }),
   };
 
-  searchCache.set(cacheKey, response);
-  return response;
+  return finalizeResponse(response, cacheKey, warnings);
 }
 
 /**
  * Full-text search across official Midnight documentation
  */
 export async function searchDocs(input: SearchDocsInput) {
-  // Validate input
-  const queryValidation = validateQuery(input.query);
-  if (!queryValidation.isValid) {
-    return {
-      error: "Invalid query",
-      details: queryValidation.errors,
-      suggestion: "Provide a valid search query with at least 2 characters",
-    };
+  // Validate input using common helper
+  const validation = validateSearchInput(input.query, input.limit);
+  if (!validation.success) {
+    return validation.error;
   }
-
-  const limitValidation = validateNumber(input.limit, {
-    min: 1,
-    max: 50,
-    defaultValue: 10,
-  });
-  const sanitizedQuery = queryValidation.sanitized;
-  const limit = limitValidation.value;
+  const { sanitizedQuery, limit, warnings } = validation.context;
 
   logger.debug("Searching documentation", {
     query: sanitizedQuery,
@@ -288,34 +341,17 @@ export async function searchDocs(input: SearchDocsInput) {
     limit,
     input.category
   );
-  const cached = searchCache.get(cacheKey);
-  if (cached) {
-    logger.debug("Search cache hit", { cacheKey });
-    return cached;
-  }
+  const cached = checkSearchCache(cacheKey);
+  if (cached) return cached;
 
-  // Use hosted API if in hosted mode
-  if (isHostedMode()) {
-    try {
-      const response = await searchDocsHosted(
-        sanitizedQuery,
-        limit,
-        input.category
-      );
-      searchCache.set(cacheKey, response);
-      return {
-        ...response,
-        ...(queryValidation.warnings.length > 0 && {
-          warnings: queryValidation.warnings,
-        }),
-      };
-    } catch (error) {
-      logger.warn("Hosted API search failed, falling back to local", {
-        error: String(error),
-      });
-      // Fall through to local search
-    }
-  }
+  // Try hosted API first
+  const hostedResult = await tryHostedSearch(
+    "docs",
+    () => searchDocsHosted(sanitizedQuery, limit, input.category),
+    cacheKey,
+    warnings
+  );
+  if (hostedResult) return hostedResult.result;
 
   // Local search (fallback or when in local mode)
   const filter: SearchFilter = {
@@ -343,13 +379,9 @@ export async function searchDocs(input: SearchDocsInput) {
     totalResults: results.length,
     query: sanitizedQuery,
     category: input.category,
-    ...(queryValidation.warnings.length > 0 && {
-      warnings: queryValidation.warnings,
-    }),
   };
 
-  searchCache.set(cacheKey, response);
-  return response;
+  return finalizeResponse(response, cacheKey, warnings);
 }
 
 // Tool definitions for MCP
