@@ -295,6 +295,12 @@ async function getRepoFilesFast(
     const extract = tar.extract();
 
     extract.on("entry", (header, stream, next) => {
+      // Handle cases where stream is undefined
+      if (!stream) {
+        next();
+        return;
+      }
+
       const chunks: Buffer[] = [];
 
       // Remove the repo-branch prefix from path (e.g., "compact-main/src/..." -> "src/...")
