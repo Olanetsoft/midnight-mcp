@@ -67,6 +67,11 @@ jobs:
     if: needs.check-releases.outputs.should_reindex == 'true'
     runs-on: ubuntu-latest
 
+    # Required for repository dispatch
+    permissions:
+      contents: read
+      actions: write
+
     # Prevent concurrent indexing runs
     concurrency:
       group: midnight-indexing
