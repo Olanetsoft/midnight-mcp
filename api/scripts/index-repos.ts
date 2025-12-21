@@ -168,17 +168,17 @@ async function getRepoFiles(
             "node_modules",
             "dist",
             "build",
-            "target",        // Rust
+            "target", // Rust
             ".next",
             "out",
 
             // Version control & editor config
             ".git",
-            ".github",       // Workflows not useful for code search
+            ".github", // Workflows not useful for code search
             ".husky",
             ".vscode",
             ".idea",
-            ".cargo",        // Rust cargo config
+            ".cargo", // Rust cargo config
             ".config",
 
             // Caches
@@ -186,15 +186,12 @@ async function getRepoFiles(
             ".turbo",
             "__pycache__",
             ".parcel-cache",
-            ".yarn",         // Yarn cache/releases
+            ".yarn", // Yarn cache/releases
 
-            // Test artifacts (skip generated, keep actual test code in tests/)
+            // Test artifacts (skip generated output, but KEEP actual test code!)
             "coverage",
             "__snapshots__",
             "__mocks__",
-            "fixtures",
-            "testdata",
-            "integration-tests",  // Usually e2e tests with setup noise
 
             // Dependencies
             "vendor",
@@ -203,30 +200,34 @@ async function getRepoFiles(
             "versioned_docs",
             "versioned_sidebars",
             "i18n",
-            "static",            // Images/assets
+            "static", // Images/assets
             "static-html",
-            "blog",              // Blog posts not useful for API search
-            "plugins",           // Docusaurus plugins
+            "blog", // Blog posts not useful for API search
+            "plugins", // Docusaurus plugins
 
             // Rust specific
             "benches",
 
             // Midnight-specific directories (from actual repo inspection)
-            ".earthly",          // Earthly build system
-            ".sqlx",             // SQLx query cache
+            ".earthly", // Earthly build system
+            ".sqlx", // SQLx query cache
             ".changes_archive",
             ".changes_template",
             ".spellcheck",
             ".tag-decompositions",
-            "images",            // Docker/diagram images
+            "images", // Docker/diagram images
             "local-environment", // Local dev setup
-            "res",               // Chain spec resources
-            "ui",                // Internal UI tools
-            "util",              // Internal utilities
+            "res", // Chain spec resources
             "wasm-proving-demos",
             "build-tools",
-            "prerelease",        // Compact prereleases
-            "packages",          // midnight-docs test packages
+            "packages", // midnight-docs test packages
+
+            // From additional repo inspection
+            ".node", // midnight-indexer node binaries
+            ".changeset", // midnight-wallet changesets
+            "infra", // midnight-wallet docker compose
+            "mips", // midnight-improvement-proposals (shell files)
+            "docs/api", // Generated API docs
           ];
           if (!skipDirs.includes(item.name)) {
             await fetchDir(item.path);
