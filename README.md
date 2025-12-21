@@ -1,7 +1,9 @@
 # Midnight MCP Server
 
 [![npm version](https://badge.fury.io/js/midnight-mcp.svg)](https://www.npmjs.com/package/midnight-mcp)
-[![Index Repositories](https://github.com/Olanetsoft/midnight-mcp/actions/workflows/index.yml/badge.svg)](https://github.com/Olanetsoft/midnight-mcp/actions/workflows/index.yml)
+[![npm downloads](https://img.shields.io/npm/dm/midnight-mcp)](https://www.npmjs.com/package/midnight-mcp)
+[![License](https://img.shields.io/npm/l/midnight-mcp)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![CI](https://github.com/Olanetsoft/midnight-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Olanetsoft/midnight-mcp/actions/workflows/ci.yml)
 
 MCP server that gives AI assistants access to Midnight blockchain—search contracts, analyze code, and explore documentation.
