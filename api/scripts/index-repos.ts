@@ -95,7 +95,6 @@ const REPOSITORIES = [
   // ZK & cryptography
   { owner: "midnightntwrk", repo: "halo2", branch: "main" },
   { owner: "midnightntwrk", repo: "midnight-trusted-setup", branch: "main" },
-  { owner: "midnightntwrk", repo: "rs-merkle", branch: "main" },
 
   // Developer tools
   { owner: "midnightntwrk", repo: "compact-tree-sitter", branch: "main" },
