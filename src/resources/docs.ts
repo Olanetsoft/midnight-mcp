@@ -78,6 +78,13 @@ export const documentationResources: ResourceDefinition[] = [
     description: "Pausable and other security patterns from OpenZeppelin",
     mimeType: "text/markdown",
   },
+  {
+    uri: "midnight://docs/tokenomics",
+    name: "Midnight Tokenomics Whitepaper",
+    description:
+      "Complete tokenomics documentation covering NIGHT token, DUST resource, block rewards, token distribution (Glacier Drop), and cooperative tokenomics",
+    mimeType: "text/markdown",
+  },
 ];
 
 /**
