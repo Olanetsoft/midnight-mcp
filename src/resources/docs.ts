@@ -66,6 +66,13 @@ export const documentationResources: ResourceDefinition[] = [
       "DApp Connector API for Midnight Lace wallet - React hooks, TypeScript types",
     mimeType: "text/markdown",
   },
+  {
+    uri: "midnight://docs/common-errors",
+    name: "Common Errors & Solutions",
+    description:
+      "Troubleshooting guide: compiler errors, SDK errors, deployment issues with fixes",
+    mimeType: "text/markdown",
+  },
 ];
 
 /**

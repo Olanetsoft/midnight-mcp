@@ -29,10 +29,10 @@ import type {
   SamplingResponse,
 } from "./types/index.js";
 
-// Server information
+// Server information - version should match package.json
 const SERVER_INFO = {
   name: "midnight-mcp",
-  version: "1.0.0",
+  version: "0.1.4",
   description: "MCP Server for Midnight Blockchain Development",
 };
 
