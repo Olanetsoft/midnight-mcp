@@ -85,6 +85,23 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 }
 ```
 
+### VS Code Copilot
+
+Add to your VS Code settings (`.vscode/mcp.json` in your workspace or user settings):
+
+```json
+{
+  "mcpServers": {
+    "midnight": {
+      "command": "npx",
+      "args": ["-y", "midnight-mcp"]
+    }
+  }
+}
+```
+
+Or via Command Palette: `MCP: Add Server` → select "command (stdio)" → enter `npx -y midnight-mcp`
+
 ---
 
 Restart your editor after adding the config. All features work out of the box—no API keys or setup required.
