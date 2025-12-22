@@ -187,8 +187,12 @@ const EXAMPLES: ExampleDefinition[] = [
 /**
  * Resolve repository name alias to owner/repo
  */
-function resolveRepo(repoName: string): { owner: string; repo: string } | null {
-  const normalized = repoName.toLowerCase().replace(/^midnightntwrk\//, "");
+function resolveRepo(
+  repoName?: string
+): { owner: string; repo: string } | null {
+  // Default to compact if not provided
+  const name = repoName || "compact";
+  const normalized = name.toLowerCase().replace(/^midnightntwrk\//, "");
   const alias = REPO_ALIASES[normalized];
   if (alias) return alias;
 
@@ -200,8 +204,8 @@ function resolveRepo(repoName: string): { owner: string; repo: string } | null {
   }
 
   // Assume it's a full org/repo name
-  if (repoName.includes("/")) {
-    const [owner, repo] = repoName.split("/");
+  if (name.includes("/")) {
+    const [owner, repo] = name.split("/");
     return { owner, repo };
   }
 
@@ -355,7 +359,8 @@ export async function getVersionInfo(input: GetVersionInfoInput) {
   logger.debug("Getting version info", input);
 
   // Special handling for "midnight-examples" - redirect to listing examples
-  const normalizedRepo = input.repo.toLowerCase();
+  const repoName = input.repo || "compact";
+  const normalizedRepo = repoName.toLowerCase();
   if (normalizedRepo === "midnight-examples" || normalizedRepo === "examples") {
     const exampleRepos = ["example-counter", "example-bboard", "example-dex"];
     const versions = await Promise.all(
