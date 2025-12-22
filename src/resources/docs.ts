@@ -9,80 +9,61 @@ import { EMBEDDED_DOCS } from "./content/index.js";
 import type { ResourceDefinition } from "./schemas.js";
 
 // Documentation resource URIs
+// NOTE: Only resources with embedded content are listed here.
+// For other docs (glossary, Zswap, Kachina, etc.), use search_docs tool
+// which queries the indexed Vector DB for the full midnight-docs repo.
 export const documentationResources: ResourceDefinition[] = [
   {
     uri: "midnight://docs/compact-reference",
     name: "Compact Language Reference",
     description:
-      "Complete Compact language reference including syntax, types, built-in functions, and circuit definitions",
+      "Quick reference for Compact syntax, types, circuits, and witnesses",
     mimeType: "text/markdown",
   },
   {
     uri: "midnight://docs/sdk-api",
     name: "TypeScript SDK API",
     description:
-      "TypeScript SDK API documentation with type signatures and usage examples",
-    mimeType: "text/markdown",
-  },
-  {
-    uri: "midnight://docs/concepts/zero-knowledge",
-    name: "Zero-Knowledge Proofs",
-    description:
-      "Conceptual documentation about zero-knowledge proofs in Midnight",
-    mimeType: "text/markdown",
-  },
-  {
-    uri: "midnight://docs/concepts/shielded-state",
-    name: "Shielded State",
-    description:
-      "Understanding shielded (private) vs unshielded (public) state in Midnight",
-    mimeType: "text/markdown",
-  },
-  {
-    uri: "midnight://docs/concepts/witnesses",
-    name: "Witness Functions",
-    description:
-      "How witness functions work in Midnight for off-chain computation",
-    mimeType: "text/markdown",
-  },
-  {
-    uri: "midnight://docs/concepts/kachina",
-    name: "Kachina Protocol",
-    description: "The Kachina protocol underlying Midnight's privacy features",
+      "TypeScript SDK API reference with type signatures and usage examples",
     mimeType: "text/markdown",
   },
   {
     uri: "midnight://docs/openzeppelin",
     name: "OpenZeppelin Contracts for Compact",
     description:
-      "Official OpenZeppelin library documentation - the recommended source for token contracts, access control, and security patterns",
+      "Official OpenZeppelin library - tokens, access control, security patterns",
     mimeType: "text/markdown",
   },
   {
     uri: "midnight://docs/openzeppelin/token",
     name: "OpenZeppelin FungibleToken",
-    description:
-      "Official token contract implementation - the recommended standard for tokens on Midnight",
+    description: "Privacy-preserving token standard for Midnight",
     mimeType: "text/markdown",
   },
   {
     uri: "midnight://docs/openzeppelin/access",
     name: "OpenZeppelin Access Control",
-    description:
-      "Ownable, roles, and access control patterns from OpenZeppelin",
+    description: "Ownable, roles, and access control patterns",
     mimeType: "text/markdown",
   },
   {
     uri: "midnight://docs/openzeppelin/security",
     name: "OpenZeppelin Security",
-    description: "Pausable and other security patterns from OpenZeppelin",
+    description: "Pausable and security patterns",
     mimeType: "text/markdown",
   },
   {
     uri: "midnight://docs/tokenomics",
-    name: "Midnight Tokenomics Whitepaper",
+    name: "Tokenomics Summary",
     description:
-      "Complete tokenomics documentation covering NIGHT token, DUST resource, block rewards, token distribution (Glacier Drop), and cooperative tokenomics",
+      "Curated summary: NIGHT token, DUST resource, block rewards, Glacier Drop distribution",
+    mimeType: "text/markdown",
+  },
+  {
+    uri: "midnight://docs/wallet-integration",
+    name: "Wallet Integration Guide",
+    description:
+      "DApp Connector API for Midnight Lace wallet - React hooks, TypeScript types",
     mimeType: "text/markdown",
   },
 ];

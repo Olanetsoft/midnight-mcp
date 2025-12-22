@@ -52,6 +52,33 @@ export const codeResources: ResourceDefinition[] = [
     description: "Starter template for private voting contracts",
     mimeType: "text/x-compact",
   },
+  {
+    uri: "midnight://code/examples/nullifier",
+    name: "Nullifier Pattern",
+    description:
+      "How to create and use nullifiers to prevent double-spending and replay attacks",
+    mimeType: "text/x-compact",
+  },
+  {
+    uri: "midnight://code/examples/hash",
+    name: "Hash Functions",
+    description:
+      "Using hash functions for commitments, nullifiers, and data integrity",
+    mimeType: "text/x-compact",
+  },
+  {
+    uri: "midnight://code/examples/simple-counter",
+    name: "Simple Counter",
+    description: "Minimal counter contract for beginners learning Compact",
+    mimeType: "text/x-compact",
+  },
+  {
+    uri: "midnight://code/templates/basic",
+    name: "Basic Contract Template",
+    description:
+      "Starting template with initialization, access control, and state management",
+    mimeType: "text/x-compact",
+  },
 ];
 
 /**

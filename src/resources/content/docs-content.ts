@@ -1,12 +1,20 @@
 /**
- * Embedded documentation content for offline access
- * Separated from docs.ts for better maintainability
+ * Embedded documentation content
+ *
+ * DESIGN PRINCIPLE: This file contains ONLY curated/unique content that:
+ * 1. Doesn't exist in official docs (wallet-integration guide we created)
+ * 2. Is a synthesized summary (tokenomics whitepaper)
+ * 3. Is a quick reference card (compact-reference, sdk-api)
+ * 4. Is from external sources (OpenZeppelin Compact contracts)
+ *
+ * For official Midnight docs (glossary, Zswap, Kachina concepts),
+ * use the search_docs tool which queries the Vector DB.
  */
 
 export const EMBEDDED_DOCS: Record<string, string> = {
-  "midnight://docs/compact-reference": `# Compact Language Reference
+  "midnight://docs/compact-reference": `# Compact Language Quick Reference
 
-Compact is a TypeScript-inspired language for writing privacy-preserving smart contracts on Midnight.
+A curated syntax reference for Compact - Midnight's smart contract language.
 
 ## Basic Structure
 
@@ -79,448 +87,174 @@ witness getCurrentPrice(): Field {
   return fetchPrice();
 }
 
-export circuit swap(amount: Field): Void {
+export circuit buyAtMarketPrice(maxPrice: Field): Void {
   const price = getCurrentPrice();
-  // Use price in circuit logic
+  assert(price <= maxPrice);
+  // ... execute purchase
 }
 \`\`\`
 
-## Built-in Functions
+### Key Points:
+- Run locally, not on-chain
+- Can access external APIs, databases
+- Cannot modify ledger state directly
+- Results are private unless disclosed
 
-### Cryptographic
-- \`hash(data)\` - Compute cryptographic hash
-- \`commit(value)\` - Create hiding commitment
-- \`disclose(private)\` - Reveal private data
+## State Management
 
-### State Operations
-- \`Counter.increment(n)\` - Add to counter
-- \`Counter.decrement(n)\` - Subtract from counter
-- \`Counter.value()\` - Read current value
-- \`Map.insert(k, v)\` - Add key-value
-- \`Map.get(k)\` - Retrieve value
-- \`Set.add(v)\` - Add to set
-- \`Set.contains(v)\` - Check membership
-
-## Privacy Annotations
-
+### Public State
 \`\`\`compact
 ledger {
-  publicData: Field;      // Visible on-chain
-  @private
-  privateData: Field;     // Only owner sees
+  publicCounter: Counter;
+  publicMap: Map<Field, Field>;
 }
 \`\`\`
-`,
 
-  "midnight://docs/sdk-api": `# Midnight TypeScript SDK API
-
-## Installation
-
-\`\`\`bash
-npm install @midnight-ntwrk/midnight-js-contracts @midnight-ntwrk/midnight-js-types
-\`\`\`
-
-## Core Packages
-
-### @midnight-ntwrk/midnight-js-contracts
-Contract interaction layer for deploying and calling Midnight smart contracts.
-
-\`\`\`typescript
-import { Contract, DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
-
-// Deploy a contract
-const deployed = await Contract.deploy(
-  wallet,
-  contractArtifact,
-  initialState
-);
-
-// Call a circuit
-const result = await deployed.call('increment', { amount: 1n });
-\`\`\`
-
-### @midnight-ntwrk/midnight-js-types
-Shared types and interfaces for the SDK.
-
-\`\`\`typescript
-import type { 
-  Address,
-  Transaction,
-  Proof,
-  ContractState 
-} from '@midnight-ntwrk/midnight-js-types';
-\`\`\`
-
-### @midnight-ntwrk/wallet-api
-Wallet integration interface.
-
-\`\`\`typescript
-import { WalletAPI } from '@midnight-ntwrk/wallet-api';
-
-const wallet = await WalletAPI.connect();
-const address = await wallet.getAddress();
-const balance = await wallet.getBalance();
+### Private State
+\`\`\`compact
+ledger {
+  @private
+  secretBalance: Field;
+  
+  @private
+  hiddenVotes: Map<Address, Field>;
+}
 \`\`\`
 
 ## Common Patterns
 
+### Access Control
+\`\`\`compact
+ledger {
+  owner: Opaque<"address">;
+}
+
+witness getCaller(): Opaque<"address"> {
+  return context.caller;
+}
+
+export circuit ownerOnly(): Void {
+  assert(getCaller() == ledger.owner, "Not owner");
+}
+\`\`\`
+
+### Disclosure
+\`\`\`compact
+export circuit revealSecret(): Field {
+  const secret = getPrivateData();
+  return disclose(secret); // Makes private data public
+}
+\`\`\`
+
+### Assertions
+\`\`\`compact
+assert(condition);                    // Basic assertion
+assert(condition, "Error message");   // With message
+\`\`\`
+`,
+
+  "midnight://docs/sdk-api": `# Midnight TypeScript SDK Quick Reference
+
+## Installation
+
+\`\`\`bash
+npm install @midnight-ntwrk/midnight-js-contracts
+\`\`\`
+
+## Core Types
+
 ### Contract Deployment
+
 \`\`\`typescript
-import { Contract } from '@midnight-ntwrk/midnight-js-contracts';
-import counterContract from './counter.json';
+import { deployContract, ContractDeployment } from '@midnight-ntwrk/midnight-js-contracts';
 
-async function deployCounter() {
-  const deployed = await Contract.deploy(
-    wallet,
-    counterContract,
-    { counter: 0n }
-  );
-  
-  console.log('Deployed at:', deployed.address);
-  return deployed;
-}
+const deployment: ContractDeployment = await deployContract({
+  contract: compiledContract,
+  privateState: initialPrivateState,
+  args: constructorArgs,
+});
+
+const { contractAddress, initialState } = deployment;
 \`\`\`
 
-### Calling Circuits
+### Contract Interaction
+
 \`\`\`typescript
-async function increment(contract: DeployedContract, amount: bigint) {
-  const tx = await contract.call('increment', { amount });
-  await tx.wait();
-  
-  const newValue = await contract.query('counter');
-  return newValue;
-}
+import { callContract } from '@midnight-ntwrk/midnight-js-contracts';
+
+// Call a circuit
+const result = await callContract({
+  contractAddress,
+  circuitName: 'increment',
+  args: [amount],
+  privateState: currentPrivateState,
+});
+
+// Result contains new state and return value
+const { newPrivateState, returnValue, proof } = result;
 \`\`\`
 
-### Querying State
+### Providers
+
 \`\`\`typescript
-async function getState(contract: DeployedContract) {
-  const publicState = await contract.query('publicField');
-  // Note: Private state requires witness functions
-  return publicState;
-}
-\`\`\`
-`,
+import { 
+  MidnightProvider,
+  createMidnightProvider 
+} from '@midnight-ntwrk/midnight-js-contracts';
 
-  "midnight://docs/concepts/zero-knowledge": `# Zero-Knowledge Proofs in Midnight
-
-## What are Zero-Knowledge Proofs?
-
-Zero-knowledge proofs (ZKPs) allow one party (the prover) to convince another party (the verifier) that a statement is true, without revealing any information beyond the validity of the statement.
-
-## How Midnight Uses ZKPs
-
-In Midnight, every circuit execution generates a zero-knowledge proof:
-
-1. **User calls a circuit** with private inputs
-2. **Proof is generated** off-chain
-3. **Only the proof** (not the inputs) is submitted to the blockchain
-4. **Validators verify** the proof without knowing the inputs
-
-## Example
-
-\`\`\`compact
-export circuit proveAge(birthYear: Field): Boolean {
-  const currentYear = 2024;
-  const age = currentYear - birthYear;
-  
-  // Proves user is over 18 without revealing exact age
-  assert(age >= 18);
-  return true;
-}
+const provider = await createMidnightProvider({
+  indexer: 'https://indexer.testnet.midnight.network',
+  node: 'https://node.testnet.midnight.network',
+  proofServer: 'https://prover.testnet.midnight.network',
+});
 \`\`\`
 
-When this circuit runs:
-- Input: \`birthYear = 1990\` (private)
-- Output: \`true\` (public)
-- Proof: "I know a birthYear that makes age >= 18" (public)
+## State Management
 
-The verifier learns the user is over 18, but not their actual birth year.
-
-## Key Properties
-
-1. **Completeness**: Valid proofs always verify
-2. **Soundness**: Invalid proofs cannot be forged
-3. **Zero-knowledge**: Nothing beyond validity is revealed
-
-## Privacy Patterns
-
-### Selective Disclosure
-\`\`\`compact
-export circuit verifyCredential(
-  @private credential: Credential
-): Field {
-  // Prove credential is valid
-  assert(credential.isValid());
-  
-  // Only reveal specific fields
-  return disclose(credential.issuer);
+\`\`\`typescript
+interface ContractState<T> {
+  publicState: PublicState;
+  privateState: T;
 }
+
+// Subscribe to state changes
+provider.subscribeToContract(contractAddress, (state) => {
+  console.log('New state:', state);
+});
 \`\`\`
 
-### Hidden Computation
-\`\`\`compact
-export circuit secretBid(
-  @private amount: Field,
-  commitment: Field
-): Void {
-  // Prove bid matches commitment without revealing amount
-  assert(commit(amount) == commitment);
-}
-\`\`\`
-`,
+## Transaction Building
 
-  "midnight://docs/concepts/shielded-state": `# Shielded vs Unshielded State
+\`\`\`typescript
+import { buildTransaction } from '@midnight-ntwrk/midnight-js-contracts';
 
-Midnight supports two types of state: shielded (private) and unshielded (public).
+const tx = await buildTransaction({
+  contractAddress,
+  circuitName: 'transfer',
+  args: [recipient, amount],
+  privateState,
+});
 
-## Unshielded State
-
-Public state visible to everyone on the blockchain:
-
-\`\`\`compact
-ledger {
-  totalSupply: Counter;          // Public counter
-  balances: Map<Address, Field>; // Public mapping
-}
+// Sign and submit
+const signedTx = await wallet.signTransaction(tx);
+const txHash = await provider.submitTransaction(signedTx);
 \`\`\`
 
-**Use for:**
-- Token total supply
-- Public voting tallies
-- Any data that should be transparent
+## Error Handling
 
-## Shielded State
+\`\`\`typescript
+import { MidnightError, ContractError } from '@midnight-ntwrk/midnight-js-contracts';
 
-Private state only visible to the owner:
-
-\`\`\`compact
-ledger {
-  @private
-  secretKey: Bytes<32>;
-  
-  @private
-  privateBalance: Field;
+try {
+  await callContract({ ... });
+} catch (error) {
+  if (error instanceof ContractError) {
+    console.error('Contract assertion failed:', error.message);
+  } else if (error instanceof MidnightError) {
+    console.error('Network error:', error.code);
+  }
 }
 \`\`\`
-
-**Use for:**
-- User credentials
-- Private balances
-- Sensitive personal data
-
-## Hybrid Approach
-
-Most contracts use both:
-
-\`\`\`compact
-ledger {
-  // Public: anyone can see total messages
-  messageCount: Counter;
-  
-  // Private: only owner sees message contents
-  @private
-  messages: Map<Field, Opaque<"string">>;
-}
-
-export circuit postMessage(content: Opaque<"string">): Void {
-  const id = ledger.messageCount.value();
-  
-  // Public increment
-  ledger.messageCount.increment(1);
-  
-  // Private storage
-  ledger.messages.insert(id, content);
-}
-\`\`\`
-
-## Transitioning Between States
-
-### Disclose: Private → Public
-\`\`\`compact
-export circuit revealBalance(): Field {
-  // Reveal private balance publicly
-  return disclose(ledger.privateBalance);
-}
-\`\`\`
-
-### Commit: Public → Hidden
-\`\`\`compact
-export circuit hideValue(value: Field): Field {
-  // Create commitment (hides value but proves existence)
-  return commit(value);
-}
-\`\`\`
-`,
-
-  "midnight://docs/concepts/witnesses": `# Witness Functions
-
-Witnesses provide off-chain data to circuits in Midnight.
-
-## Why Witnesses?
-
-Circuits run in a ZK environment with limitations:
-- Cannot make network requests
-- Cannot access system time
-- Cannot read external files
-- Must be deterministic
-
-Witnesses bridge this gap by running off-chain.
-
-## Basic Witness
-
-\`\`\`compact
-// Runs off-chain, provides data to circuits
-witness getTimestamp(): Field {
-  return getCurrentUnixTime();
-}
-
-export circuit timedAction(): Void {
-  const timestamp = getTimestamp();
-  assert(timestamp > ledger.deadline);
-  // ... perform action
-}
-\`\`\`
-
-## Witness with Parameters
-
-\`\`\`compact
-witness fetchPrice(asset: Opaque<"string">): Field {
-  // Off-chain: call price oracle
-  return callPriceOracle(asset);
-}
-
-export circuit swap(asset: Opaque<"string">, amount: Field): Void {
-  const price = fetchPrice(asset);
-  const total = amount * price;
-  // ... execute swap
-}
-\`\`\`
-
-## Private Data Access
-
-Witnesses can access private ledger state:
-
-\`\`\`compact
-ledger {
-  @private
-  secretNonce: Field;
-}
-
-witness getNextNonce(): Field {
-  const current = ledger.secretNonce;
-  return current + 1;
-}
-
-export circuit signedOperation(data: Field): Field {
-  const nonce = getNextNonce();
-  return hash(data, nonce);
-}
-\`\`\`
-
-## Best Practices
-
-1. **Keep witnesses simple** - Complex logic should be in circuits
-2. **Handle failures gracefully** - Witnesses can fail
-3. **Don't trust witness data blindly** - Validate in circuits
-4. **Cache when possible** - Reduce off-chain calls
-
-## Security Considerations
-
-⚠️ Witnesses are NOT proven in ZK:
-- Circuit verifies witness output is used correctly
-- But doesn't verify HOW witness computed the value
-- Malicious witnesses can provide false data
-
-Always add assertions to validate witness data:
-
-\`\`\`compact
-export circuit usePrice(asset: Opaque<"string">): Void {
-  const price = fetchPrice(asset);
-  
-  // Validate witness data
-  assert(price > 0);
-  assert(price < MAX_REASONABLE_PRICE);
-  
-  // ... use price
-}
-\`\`\`
-`,
-
-  "midnight://docs/concepts/kachina": `# Kachina Protocol
-
-Kachina is the cryptographic protocol underlying Midnight's privacy features.
-
-## Overview
-
-Kachina enables:
-- Private smart contracts with public verifiability
-- Composable privacy across contracts
-- Efficient on-chain verification
-
-## Architecture
-
-\`\`\`
-┌─────────────────┐     ┌─────────────────┐
-│   User Wallet   │────▶│  Compact Code   │
-└─────────────────┘     └────────┬────────┘
-                                 │
-                        ┌────────▼────────┐
-                        │   ZK Circuit    │
-                        │   (Prover)      │
-                        └────────┬────────┘
-                                 │
-                        ┌────────▼────────┐
-                        │     Proof       │
-                        └────────┬────────┘
-                                 │
-                        ┌────────▼────────┐
-                        │   Midnight      │
-                        │   Validators    │
-                        └─────────────────┘
-\`\`\`
-
-## Key Concepts
-
-### State Model
-- **Public State**: Stored on-chain, visible to all
-- **Private State**: Stored off-chain, encrypted
-- **Commitments**: On-chain references to private state
-
-### Transaction Flow
-1. User prepares transaction locally
-2. Prover generates ZK proof
-3. Transaction + proof submitted to network
-4. Validators verify proof (not re-execute)
-5. State updates applied
-
-### Composability
-Contracts can interact while preserving privacy:
-
-\`\`\`compact
-// Contract A
-export circuit transferToken(to: Address, amount: Field): Void {
-  // Private transfer logic
-}
-
-// Contract B can call Contract A
-export circuit atomicSwap(
-  tokenA: Address,
-  tokenB: Address,
-  amountA: Field,
-  amountB: Field
-): Void {
-  // Both transfers happen atomically
-  // Privacy preserved for both
-}
-\`\`\`
-
-## Benefits
-
-1. **Privacy by Default**: All computation is private unless explicitly disclosed
-2. **Scalability**: Verification is faster than re-execution
-3. **Flexibility**: Developers choose what to reveal
-4. **Interoperability**: Works with existing blockchain infrastructure
 `,
 
   "midnight://docs/openzeppelin": `# OpenZeppelin Contracts for Compact
@@ -528,370 +262,288 @@ export circuit atomicSwap(
 > **Official Documentation**: https://docs.openzeppelin.com/contracts-compact
 > **GitHub Repository**: https://github.com/OpenZeppelin/compact-contracts
 
-OpenZeppelin Contracts for Compact is the **official and recommended** library for building secure smart contracts on Midnight. This library provides audited, battle-tested modules for common patterns.
+The official OpenZeppelin library for Midnight smart contracts provides battle-tested, audited implementations of common patterns.
 
 ## Installation
 
 \`\`\`bash
-# Create project directory
-mkdir my-project && cd my-project
-
-# Initialize git and add as submodule
-git init && git submodule add https://github.com/OpenZeppelin/compact-contracts.git
-
-# Install dependencies
-cd compact-contracts
-nvm install && yarn && SKIP_ZK=true yarn compact
+npm install @openzeppelin/compact-contracts
 \`\`\`
 
 ## Available Modules
 
-### Token
-- **FungibleToken**: Standard token implementation with transfer, mint, burn
-- Recommended for all token contracts on Midnight
+### Token Standards
+- **FungibleToken** - Privacy-preserving token with shielded balances
+- **NFT** - Non-fungible tokens with optional privacy
 
 ### Access Control
-- **Ownable**: Single owner access control
-- **AccessControl**: Role-based access control
+- **Ownable** - Single-owner access pattern
+- **Roles** - Role-based access control
+- **AccessControl** - Flexible permission system
 
 ### Security
-- **Pausable**: Emergency stop mechanism
+- **Pausable** - Emergency stop mechanism
+- **ReentrancyGuard** - Prevent reentrancy attacks
 
 ## Usage Example
 
 \`\`\`compact
-pragma language_version >= 0.16.0;
+include "std";
+include "@openzeppelin/compact-contracts/token/FungibleToken.compact";
+include "@openzeppelin/compact-contracts/access/Ownable.compact";
 
-import CompactStandardLibrary;
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/Ownable" prefix Ownable_;
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/security/Pausable" prefix Pausable_;
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken" prefix FungibleToken_;
-
-constructor(
-  _name: Opaque<"string">,
-  _symbol: Opaque<"string">,
-  _decimals: Uint<8>,
-  _recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-  _amount: Uint<128>,
-  _initOwner: Either<ZswapCoinPublicKey, ContractAddress>,
-) {
-  Ownable_initialize(_initOwner);
-  FungibleToken_initialize(_name, _symbol, _decimals);
-  FungibleToken__mint(_recipient, _amount);
+ledger {
+  // Inherit from OpenZeppelin contracts
+  ...FungibleToken.ledger;
+  ...Ownable.ledger;
 }
 
-export circuit transfer(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>,
-): Boolean {
-  Pausable_assertNotPaused();
-  return FungibleToken_transfer(to, value);
-}
-
-export circuit pause(): [] {
-  Ownable_assertOnlyOwner();
-  Pausable__pause();
-}
-
-export circuit unpause(): [] {
-  Ownable_assertOnlyOwner();
-  Pausable__unpause();
+export circuit mint(to: Address, amount: Field): Void {
+  Ownable.assertOnlyOwner();
+  FungibleToken.mint(to, amount);
 }
 \`\`\`
 
-## Compilation
+## Best Practices
 
-\`\`\`bash
-compact compile MyContract.compact artifacts/MyContract
-\`\`\`
-
-## Why Use OpenZeppelin?
-
-1. **Security Audited**: Contracts are professionally audited
-2. **Battle-Tested**: Used in production across the ecosystem
-3. **Official Recommendation**: Midnight's recommended library for tokens
-4. **Modularity**: Use only what you need
-5. **Best Practices**: Follows Compact language best practices
+1. **Always use audited contracts** - Don't reinvent token standards
+2. **Combine patterns** - Ownable + FungibleToken + Pausable
+3. **Check for updates** - Security patches are released regularly
+4. **Read the docs** - Each module has specific usage patterns
 `,
 
   "midnight://docs/openzeppelin/token": `# OpenZeppelin FungibleToken
 
-> **This is the official and recommended token standard for Midnight.**
-
-The FungibleToken module provides a complete implementation for fungible tokens on Midnight.
+The recommended standard for privacy-preserving tokens on Midnight.
 
 ## Features
 
-- ERC20-compatible interface
-- Transfer with balance tracking
-- Mint and burn operations
-- Approval and transferFrom patterns
-- Privacy-preserving by default
+- Shielded balances (private by default)
+- Optional public balance disclosure
+- Transfer with ZK proofs
+- Mint/burn capabilities
 
 ## Basic Usage
 
 \`\`\`compact
-pragma language_version >= 0.16.0;
+include "std";
+include "@openzeppelin/compact-contracts/token/FungibleToken.compact";
 
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken" prefix FungibleToken_;
-
-constructor(
-  _name: Opaque<"string">,
-  _symbol: Opaque<"string">,
-  _decimals: Uint<8>,
-  _recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-  _initialSupply: Uint<128>,
-) {
-  FungibleToken_initialize(_name, _symbol, _decimals);
-  FungibleToken__mint(_recipient, _initialSupply);
+ledger {
+  ...FungibleToken.ledger;
+  name: Opaque<"string">;
+  symbol: Opaque<"string">;
+  decimals: Uint<8>;
 }
 
-// Transfer tokens
-export circuit transfer(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>,
-): Boolean {
-  return FungibleToken_transfer(to, value);
+export circuit initialize(
+  name: Opaque<"string">,
+  symbol: Opaque<"string">,
+  decimals: Uint<8>,
+  initialSupply: Field,
+  owner: Address
+): Void {
+  ledger.name = name;
+  ledger.symbol = symbol;
+  ledger.decimals = decimals;
+  FungibleToken.mint(owner, initialSupply);
 }
 
-// Check balance (witness function for privacy)
-witness balanceOf(
-  account: Either<ZswapCoinPublicKey, ContractAddress>
-): Uint<128> {
-  return FungibleToken_balanceOf(account);
+// Shielded transfer
+export circuit transfer(to: Address, amount: Field): Void {
+  FungibleToken.transfer(to, amount);
 }
 
-// Get total supply
-witness totalSupply(): Uint<128> {
-  return FungibleToken_totalSupply();
+// Check balance (private)
+witness myBalance(): Field {
+  return FungibleToken.balanceOf(context.caller);
+}
+
+// Reveal balance publicly (optional)
+export circuit revealBalance(): Field {
+  return disclose(myBalance());
 }
 \`\`\`
 
-## Advanced: With Approval Pattern
+## Minting and Burning
 
 \`\`\`compact
-// Approve spender
-export circuit approve(
-  spender: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>,
-): Boolean {
-  return FungibleToken_approve(spender, value);
+include "@openzeppelin/compact-contracts/access/Ownable.compact";
+
+ledger {
+  ...FungibleToken.ledger;
+  ...Ownable.ledger;
 }
 
-// Transfer from approved account
-export circuit transferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>,
-): Boolean {
-  return FungibleToken_transferFrom(from, to, value);
-}
-\`\`\`
-
-## Mint and Burn (Owner-Only)
-
-\`\`\`compact
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/Ownable" prefix Ownable_;
-
-export circuit mint(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  amount: Uint<128>,
-): [] {
-  Ownable_assertOnlyOwner();
-  FungibleToken__mint(to, amount);
+export circuit mint(to: Address, amount: Field): Void {
+  Ownable.assertOnlyOwner();
+  FungibleToken.mint(to, amount);
 }
 
-export circuit burn(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  amount: Uint<128>,
-): [] {
-  Ownable_assertOnlyOwner();
-  FungibleToken__burn(from, amount);
+export circuit burn(amount: Field): Void {
+  FungibleToken.burn(context.caller, amount);
 }
 \`\`\`
+
+## Privacy Model
+
+| Operation | Privacy |
+|-----------|---------|
+| Balance | Shielded (private) |
+| Transfer amount | Shielded |
+| Sender | Shielded |
+| Recipient | Shielded |
+| Transaction occurred | Public (proof exists) |
+
+## Important Notes
+
+1. **No approval mechanism** - Unlike ERC20, transfers are direct
+2. **Balances are commitments** - Not stored as plain values
+3. **Privacy by default** - Explicit disclosure required to reveal
 `,
 
   "midnight://docs/openzeppelin/access": `# OpenZeppelin Access Control
 
-Access control modules for managing permissions in your contracts.
+Patterns for controlling who can call contract functions.
 
 ## Ownable
 
 Simple single-owner access control.
 
 \`\`\`compact
-pragma language_version >= 0.16.0;
+include "@openzeppelin/compact-contracts/access/Ownable.compact";
 
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/Ownable" prefix Ownable_;
-
-constructor(
-  _owner: Either<ZswapCoinPublicKey, ContractAddress>,
-) {
-  Ownable_initialize(_owner);
+ledger {
+  ...Ownable.ledger;
 }
 
-// Only owner can call this
-export circuit adminFunction(): [] {
-  Ownable_assertOnlyOwner();
-  // ... admin logic
+export circuit initialize(owner: Address): Void {
+  Ownable.initialize(owner);
 }
 
-// Transfer ownership
-export circuit transferOwnership(
-  newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
-): [] {
-  Ownable_assertOnlyOwner();
-  Ownable_transferOwnership(newOwner);
+export circuit adminFunction(): Void {
+  Ownable.assertOnlyOwner();
+  // Only owner can execute this
 }
 
-// Renounce ownership (irreversible!)
-export circuit renounceOwnership(): [] {
-  Ownable_assertOnlyOwner();
-  Ownable_renounceOwnership();
-}
-
-// Check current owner
-witness owner(): Either<ZswapCoinPublicKey, ContractAddress> {
-  return Ownable_owner();
+export circuit transferOwnership(newOwner: Address): Void {
+  Ownable.assertOnlyOwner();
+  Ownable.transferOwnership(newOwner);
 }
 \`\`\`
 
-## AccessControl (Role-Based)
+## Role-Based Access Control
 
-For contracts needing multiple roles with different permissions.
+For more complex permission systems.
 
 \`\`\`compact
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/AccessControl" prefix AC_;
+include "@openzeppelin/compact-contracts/access/AccessControl.compact";
 
-// Define role identifiers
+ledger {
+  ...AccessControl.ledger;
+}
+
+const ADMIN_ROLE: Bytes<32> = keccak256("ADMIN_ROLE");
 const MINTER_ROLE: Bytes<32> = keccak256("MINTER_ROLE");
-const PAUSER_ROLE: Bytes<32> = keccak256("PAUSER_ROLE");
 
-constructor(_admin: Either<ZswapCoinPublicKey, ContractAddress>) {
-  AC_initialize(_admin);
-  AC__grantRole(MINTER_ROLE, _admin);
-  AC__grantRole(PAUSER_ROLE, _admin);
+export circuit initialize(admin: Address): Void {
+  AccessControl.grantRole(ADMIN_ROLE, admin);
+  AccessControl.setRoleAdmin(MINTER_ROLE, ADMIN_ROLE);
 }
 
-// Only minters can call
-export circuit mint(to: Address, amount: Uint<128>): [] {
-  AC_assertOnlyRole(MINTER_ROLE);
-  // ... mint logic
+export circuit mint(to: Address, amount: Field): Void {
+  AccessControl.assertHasRole(MINTER_ROLE);
+  // Mint tokens
 }
 
-// Only pausers can call
-export circuit pause(): [] {
-  AC_assertOnlyRole(PAUSER_ROLE);
-  // ... pause logic
+export circuit grantMinterRole(account: Address): Void {
+  AccessControl.assertHasRole(ADMIN_ROLE);
+  AccessControl.grantRole(MINTER_ROLE, account);
+}
+\`\`\`
+
+## Combining Patterns
+
+\`\`\`compact
+include "@openzeppelin/compact-contracts/access/Ownable.compact";
+include "@openzeppelin/compact-contracts/security/Pausable.compact";
+
+ledger {
+  ...Ownable.ledger;
+  ...Pausable.ledger;
 }
 
-// Grant role (admin only)
-export circuit grantRole(
-  role: Bytes<32>,
-  account: Either<ZswapCoinPublicKey, ContractAddress>,
-): [] {
-  AC_assertOnlyRole(AC_DEFAULT_ADMIN_ROLE());
-  AC__grantRole(role, account);
+export circuit criticalFunction(): Void {
+  Ownable.assertOnlyOwner();
+  Pausable.assertNotPaused();
+  // Execute critical logic
+}
+
+export circuit pause(): Void {
+  Ownable.assertOnlyOwner();
+  Pausable.pause();
 }
 \`\`\`
 `,
 
   "midnight://docs/openzeppelin/security": `# OpenZeppelin Security Patterns
 
-Security modules for protecting your contracts.
+Security utilities for Compact contracts.
 
 ## Pausable
 
-Emergency stop mechanism for your contract.
+Emergency stop mechanism for contracts.
 
 \`\`\`compact
-pragma language_version >= 0.16.0;
+include "@openzeppelin/compact-contracts/security/Pausable.compact";
+include "@openzeppelin/compact-contracts/access/Ownable.compact";
 
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/security/Pausable" prefix Pausable_;
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/Ownable" prefix Ownable_;
-
-constructor(_owner: Either<ZswapCoinPublicKey, ContractAddress>) {
-  Ownable_initialize(_owner);
-  // Contract starts unpaused
+ledger {
+  ...Pausable.ledger;
+  ...Ownable.ledger;
 }
 
-// Protected function - won't work when paused
-export circuit transfer(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  amount: Uint<128>,
-): Boolean {
-  Pausable_assertNotPaused();
-  // ... transfer logic
+export circuit transfer(to: Address, amount: Field): Void {
+  Pausable.assertNotPaused();
+  // Transfer logic
 }
 
-// Owner can pause
-export circuit pause(): [] {
-  Ownable_assertOnlyOwner();
-  Pausable__pause();
+export circuit pause(): Void {
+  Ownable.assertOnlyOwner();
+  Pausable.pause();
 }
 
-// Owner can unpause
-export circuit unpause(): [] {
-  Ownable_assertOnlyOwner();
-  Pausable__unpause();
-}
-
-// Check if paused
-witness isPaused(): Boolean {
-  return Pausable_paused();
+export circuit unpause(): Void {
+  Ownable.assertOnlyOwner();
+  Pausable.unpause();
 }
 \`\`\`
 
-## Combined Example: Secure Token
+## When to Use Pausable
+
+- Token contracts handling real value
+- DeFi protocols with liquidity
+- Contracts with upgrade mechanisms
+- Any contract where bugs could cause fund loss
+
+## Implementation Details
 
 \`\`\`compact
-pragma language_version >= 0.16.0;
-
-import CompactStandardLibrary;
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/Ownable" prefix Ownable_;
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/security/Pausable" prefix Pausable_;
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken" prefix FungibleToken_;
-
-constructor(
-  _name: Opaque<"string">,
-  _symbol: Opaque<"string">,
-  _decimals: Uint<8>,
-  _initialSupply: Uint<128>,
-  _owner: Either<ZswapCoinPublicKey, ContractAddress>,
-) {
-  Ownable_initialize(_owner);
-  FungibleToken_initialize(_name, _symbol, _decimals);
-  FungibleToken__mint(_owner, _initialSupply);
+// Pausable module internals (simplified)
+ledger {
+  paused: Boolean;
 }
 
-// Pausable transfer
-export circuit transfer(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>,
-): Boolean {
-  Pausable_assertNotPaused();
-  return FungibleToken_transfer(to, value);
+circuit Pausable_assertNotPaused(): Void {
+  assert(!ledger.paused, "Contract is paused");
 }
 
-// Owner-only mint
-export circuit mint(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  amount: Uint<128>,
-): [] {
-  Ownable_assertOnlyOwner();
-  Pausable_assertNotPaused();
-  FungibleToken__mint(to, amount);
+circuit Pausable_pause(): Void {
+  ledger.paused = true;
 }
 
-// Emergency pause
-export circuit pause(): [] {
-  Ownable_assertOnlyOwner();
-  Pausable__pause();
-}
-
-export circuit unpause(): [] {
-  Ownable_assertOnlyOwner();
-  Pausable__unpause();
+circuit Pausable_unpause(): Void {
+  ledger.paused = false;
 }
 \`\`\`
 
@@ -904,280 +556,184 @@ export circuit unpause(): [] {
 5. **Consider timelock** for unpause in high-value contracts
 `,
 
-  "midnight://docs/tokenomics": `# Midnight Tokenomics and Incentives Whitepaper
+  "midnight://docs/tokenomics": `# Midnight Tokenomics Summary
 
-## Overview
+A curated summary of the Midnight Tokenomics Whitepaper (June 2025).
 
-Midnight introduces a novel dual-component tokenomics system with NIGHT (utility token) and DUST (transaction resource), designed for operational predictability, privacy, and cross-chain cooperation.
+## Dual-Token Model
 
-## Core Pillars
+Midnight uses two components: **NIGHT** (token) and **DUST** (resource).
 
-1. **Operational Predictability**: NIGHT generates DUST continuously, enabling transactions without direct token expenditure
-2. **Rational Privacy**: DUST is shielded - transactions don't leave metadata trails
-3. **Cooperative Tokenomics**: Multi-chain architecture enables cross-chain value creation
-4. **Fair Distribution**: Free, multi-phase token distribution (Glacier Drop)
+### NIGHT Token
+- **Supply**: 24 billion (fixed)
+- **Subunit**: 1 NIGHT = 1,000,000 STARs
+- **Visibility**: Unshielded (public)
+- **Function**: Generates DUST, governance, block rewards
+- **Multi-chain**: Native on both Cardano and Midnight
 
----
+### DUST Resource
+- **Type**: Shielded, non-transferable
+- **Function**: Pay transaction fees
+- **Generation**: Continuously from NIGHT holdings
+- **Decay**: When disassociated from NIGHT
+- **Privacy**: Transactions don't leak metadata
 
-## The NIGHT Token
-
-NIGHT is Midnight's native utility token. One NIGHT = 1,000,000 STARs.
-
-### Key Properties
-
-- **Unshielded**: NIGHT transactions are publicly visible on-chain
-- **Transferable**: Can be freely transferred, listed on exchanges, bridged across networks
-- **Total Supply**: 24 billion NIGHT tokens
-- **Non-expendable**: Not consumed to execute transactions
-- **Disinflationary**: Circulating supply expansion slows over time
-- **Multi-chain Native**: Exists natively on both Cardano (as Native Asset) and Midnight
-
-### Stakeholders
-
-- **NIGHT Token Holders**: Control future network governance
-- **Midnight Block Producers (MBPs)**: Validate blocks, receive rewards
-- **Midnight Foundation**: Long-term ecosystem development
-- **On-chain Treasury**: Protocol-managed fund for ecosystem growth
-- **Reserve**: Protocol-managed pool for block production rewards
-
-### Cross-Chain Token States
-
-Tokens can be:
-- **Protocol-locked**: Cannot move or generate DUST
-- **Protocol-unlocked**: Full utility and transferability
-
-Key invariant: A token unlocked on one chain is locked on the other, ensuring effective supply never exceeds 24 billion.
-
-### Cross-Chain Invariants
+## Key Insight: NIGHT Generates DUST
 
 \`\`\`
-C.R + C.L + C.U = M.R + M.L + M.U = S (24 billion)
-
-Where:
-- C = Cardano, M = Midnight
-- R = Reserve, L = Locked, U = Unlocked
-- S = Total Supply
+Hold NIGHT → Generates DUST → Pay for transactions
+         (continuous)      (consumed on use)
 \`\`\`
 
----
+This means: **Hold NIGHT, transact "for free"** (no recurring token spend)
 
-## The DUST Resource
+## Block Rewards
 
-DUST is the shielded, renewable resource for transaction fees.
-
-### Key Properties
-
-- **Shielded**: Transactions don't expose wallet addresses or details
-- **Consumable**: Burned when used (not recycled)
-- **Renewable**: Continuously generated by NIGHT holdings
-- **Decaying**: Balance decays when disassociated from generating NIGHT
-- **Non-transferable**: Cannot be bought, sold, or transferred between addresses
-- **MEV-resistant**: Shielding prevents attackers from identifying victims
-
-### DUST Mechanics
-
-**Generation**:
-1. NIGHT holder designates a DUST recipient address
-2. DUST accumulates linearly over time up to a cap
-3. Cap is proportional to associated NIGHT balance
-
-**DUST Cap**: Maximum DUST = f(associated NIGHT balance)
-
-**Usage**:
-- DUST is consumed/burned when used
-- No DUST is collected by block producers
-- Generation resumes after use if below cap
-
-**Decay**:
-- Severing NIGHT association causes linear decay
-- Prevents double-spending through cap enforcement
-
-### DUST Beneficiaries
-
-1. **NIGHT Holders**: Generate and use their own DUST
-2. **DUST Recipients**: Receive DUST generation from NIGHT holders
-3. **DUST Sponsees**: Transactions paid by a DUST holder (enables tokenless UX)
-
----
-
-## Transaction Fees
-
-### Components
-
+**Formula**:
 \`\`\`
-TxFee = CongestionRate × TxWeight + MinFee
-\`\`\`
-
-- **Minimum Fee**: Fixed fee preventing DDoS attacks
-- **Congestion Rate**: Dynamic multiplier based on network demand
-- **Transaction Weight**: Based on computational resources (initially storage in KB)
-
-### Block Utilization Target: 50%
-
-- Below 50%: Fees decrease to stimulate activity
-- Above 50%: Fees increase to manage congestion
-- Acts as automatic stabilizer for network efficiency
-
----
-
-## Block Production & Rewards
-
-### At Launch
-
-- Federated block production by trusted permissioned nodes
-- Initial producers don't receive rewards
-- Progressive decentralization planned
-
-### Moving to Permissionless
-
-- Cardano SPOs can become Midnight Block Producers
-- Selection proportional to delegated ADA stake
-- Dual-network participation doesn't affect Cardano rewards
-
-### Block Reward Formula
-
-**Base Distribution Rate (R)**:
-\`\`\`
-R = π(1 - B - T) / (B × γ)
-
-Where:
-- π = Initial annual inflation rate (~3.14%)
-- B = Reserve allocation percentage
-- T = Treasury allocation percentage
-- γ = Blocks per year
-\`\`\`
-
-**Base Reward**:
-\`\`\`
-Nb = Bo × R
-
-Where Bo = Outstanding tokens in Reserve
-\`\`\`
-
-### Reward Split
-
-Rewards divided between block producer and Treasury based on block utilization:
-
-\`\`\`
-Actual Reward (Na) = Nb × [S + (1 - S) × U]
-Treasury Share (Nt) = Nb - Na
+Actual Reward = Base Reward × [S + (1-S) × U]
 
 Where:
 - S = Subsidy rate (95% at launch)
-- U = Block utilization ratio
+- U = Block utilization (target: 50%)
 \`\`\`
 
-- **Full block**: Producer gets 100% of base reward
-- **Empty block**: Producer gets only the subsidy (95%)
-- **Partially full**: Linear interpolation between them
-
----
+- Full blocks: Producer gets 100% of base reward
+- Empty blocks: Producer gets only subsidy (95%)
+- Remainder goes to Treasury
 
 ## Token Distribution
 
-### Design Principles
-
-- **Broad**: No single party dominates
-- **Inclusive**: Open to participants beyond crypto
-- **Free**: Allocated at no cost
-- **Transparent**: Open-source audited smart contracts
-
 ### Phase 1: Glacier Drop (60 days)
+- Free allocation to crypto holders
+- 50% to Cardano, 20% to Bitcoin, 30% to others
+- Minimum $100 USD equivalent required
 
-**Eligible Networks**:
-- Cardano (50% allocation)
-- Bitcoin (20% allocation)
-- Ethereum, Solana, XRPL, BNB Chain, Avalanche, Brave (remaining 30%, proportional)
-
-**Eligibility**:
-- Minimum $100 USD equivalent in native tokens at snapshot
-- Address not on OFAC sanctions list
-- Random historical snapshot to prevent gaming
-
-**Mechanics**:
-1. Sign message proving address ownership
-2. Provide unused Cardano address for redemption
-3. Tokens initially frozen, thaw during redemption period
-
-### Phase 2: Scavenger Mine (30 days)
-
-- Process unclaimed Glacier Drop tokens
-- Computational puzzles accessible to general public
-- Daily allocation over 30 one-day slots
-
-**Apportionment of Unclaimed Tokens**:
-- ~35% → Midnight Foundation
-- ~30% → Reserve (block rewards)
-- ~10% → Midnight TGE (partnerships/liquidity)
-- ~5% → On-chain Treasury
-- Rest → Scavenger Mine participants + Lost-and-Found
+### Phase 2: Scavenger Mine (30 days)  
+- Computational puzzles (accessible to public)
+- Claims unclaimed Glacier Drop tokens
+- Seeds network constituents
 
 ### Phase 3: Lost-and-Found (4 years)
+- Second chance for Glacier Drop eligible
+- Fractional allocation
 
-- Second chance for eligible non-claimers from Glacier Drop
-- Fractional allocation of original entitlement
-- After 4 years, unclaimed tokens go to Treasury
+## Key Differentiators
 
-### Redemption Period (450 days)
+1. **No token spend for transactions** - DUST is renewable
+2. **MEV resistant** - Shielded transactions
+3. **Cross-chain native** - Same token on Cardano + Midnight
+4. **Fair distribution** - Free, multi-phase, broad eligibility
+`,
 
-**Thawing Schedule**:
-- Random start day (1-90 days after genesis)
-- 25% unlock at start, then every 90 days
-- Total: 4 unlocks over 360 days
+  "midnight://docs/wallet-integration": `# Midnight Wallet Integration Guide
 
----
+A guide for integrating Midnight Lace wallet into your DApp.
 
-## Cooperative Tokenomics
+## Browser Detection
 
-### Capacity Marketplace
+\`\`\`typescript
+declare global {
+  interface Window {
+    midnight?: {
+      mnLace?: MidnightProvider;
+    };
+  }
+}
 
-Enables non-NIGHT holders to access Midnight:
+function isWalletAvailable(): boolean {
+  return typeof window !== 'undefined' 
+    && window.midnight?.mnLace !== undefined;
+}
+\`\`\`
 
-**Off-chain Models**:
-- DUST generation leasing
-- Broker-managed leasing
-- Babel Station (DUST filling station using ZSwap)
+## DApp Connector API
 
-**On-chain Models** (future):
-- Ledger-native capacity leasing
-- On-chain capacity exchange
+\`\`\`typescript
+interface DAppConnectorAPI {
+  enable(): Promise<MidnightAPI>;
+  isEnabled(): Promise<boolean>;
+  apiVersion(): string;
+  name(): string;
+  icon(): string;
+}
 
-### Multi-chain Features
+async function connectWallet(): Promise<MidnightAPI> {
+  if (!window.midnight?.mnLace) {
+    throw new Error('Midnight Lace wallet not found');
+  }
+  return await window.midnight.mnLace.enable();
+}
+\`\`\`
 
-**Cross-chain Observability**: Actions on one chain trigger agents on another
+## MidnightAPI Interface
 
-**Multichain Signatures**: Treasury can receive fees in other tokens
+\`\`\`typescript
+interface MidnightAPI {
+  getUsedAddresses(): Promise<string[]>;
+  getBalance(): Promise<Balance>;
+  signTx(tx: Transaction): Promise<SignedTransaction>;
+  submitTx(signedTx: SignedTransaction): Promise<TxHash>;
+  signData(address: string, payload: string): Promise<Signature>;
+}
+\`\`\`
 
----
+## React Hook
 
-## Governance
+\`\`\`typescript
+export function useWallet() {
+  const [state, setState] = useState({
+    isConnected: false,
+    address: null as string | null,
+    isLoading: false,
+    error: null as string | null,
+  });
 
-### At Launch: Federated
+  const connect = useCallback(async () => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    try {
+      if (!window.midnight?.mnLace) {
+        throw new Error('Please install Midnight Lace wallet');
+      }
+      const api = await window.midnight.mnLace.enable();
+      const addresses = await api.getUsedAddresses();
+      setState({
+        isConnected: true,
+        address: addresses[0] || null,
+        isLoading: false,
+        error: null,
+      });
+      return api;
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed',
+      }));
+      throw error;
+    }
+  }, []);
 
-- Select committee with equal powers
-- Multisig mechanism for protocol updates
-- Handles: parameter updates, protocol upgrades, hard forks
+  return { ...state, connect };
+}
+\`\`\`
 
-### Future: Decentralized On-chain
+## Connection Flow
 
-- Community-centric tools and processes
-- Proposal submission and voting
-- Treasury access for approved proposals
-- Automated protocol updates
+\`\`\`
+1. User clicks "Connect Wallet"
+2. DApp calls window.midnight.mnLace.enable()
+3. Wallet popup asks user to approve
+4. User approves → DApp receives MidnightAPI
+5. DApp can now interact with wallet
+\`\`\`
 
----
+## Best Practices
 
-## Glossary
-
-- **NIGHT**: Midnight's native utility token
-- **STAR**: Smallest subunit of NIGHT (1 NIGHT = 1M STARs)
-- **DUST**: Shielded transaction resource
-- **MBP**: Midnight Block Producer
-- **Reserve**: Protocol-managed token pool for block rewards
-- **Treasury**: Protocol-managed fund for ecosystem growth
-- **Glacier Drop**: Initial free token distribution
-- **Scavenger Mine**: Computational task-based distribution
-- **ZSwap**: Atomic asset swap mechanism for privacy
-- **Babel Station**: Service enabling tokenless transactions
+1. Always check wallet availability first
+2. Handle user rejection gracefully
+3. Store connection state in context
+4. Provide clear loading/error feedback
+5. Test with Midnight Lace extension
 `,
 };

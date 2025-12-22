@@ -544,4 +544,269 @@ export circuit addVoter(voter: Opaque<"address">): Void {
   ledger.eligibleVoters.add(voter);
 }
 `,
+
+  "midnight://code/examples/nullifier": `// Nullifier Pattern Example
+// Demonstrates how to create and use nullifiers to prevent double-spending/actions
+
+include "std";
+
+ledger {
+  // Set of used nullifiers - prevents replay attacks
+  usedNullifiers: Set<Bytes<32>>;
+  
+  // Track claimed rewards
+  claimedRewards: Counter;
+}
+
+// Hash function for creating nullifiers
+// Combines secret + public data to create unique identifier
+witness computeNullifier(secret: Field, commitment: Field): Bytes<32> {
+  // Hash the secret with the commitment
+  // The nullifier reveals nothing about the secret
+  // but is unique per secret+commitment pair
+  return hash(secret, commitment);
+}
+
+// Alternative: nullifier from address and action ID
+witness computeActionNullifier(
+  userSecret: Field, 
+  actionId: Field
+): Bytes<32> {
+  // Create nullifier: hash(secret || actionId)
+  return hash(userSecret, actionId);
+}
+
+// Claim a reward (can only claim once per user)
+export circuit claimReward(
+  secret: Field,
+  commitment: Field,
+  rewardAmount: Field
+): Boolean {
+  // Compute the nullifier
+  const nullifier = computeNullifier(secret, commitment);
+  
+  // Check nullifier hasn't been used (prevents double-claim)
+  assert(
+    !ledger.usedNullifiers.contains(nullifier), 
+    "Reward already claimed"
+  );
+  
+  // Mark nullifier as used
+  ledger.usedNullifiers.add(nullifier);
+  
+  // Process reward
+  ledger.claimedRewards.increment(rewardAmount);
+  
+  return true;
+}
+
+// Vote with nullifier (prevents double-voting)
+export circuit voteWithNullifier(
+  voterSecret: Field,
+  proposalId: Field,
+  vote: Field
+): Boolean {
+  // Create unique nullifier for this voter + proposal
+  const nullifier = computeActionNullifier(voterSecret, proposalId);
+  
+  // Ensure hasn't voted on this proposal
+  assert(
+    !ledger.usedNullifiers.contains(nullifier),
+    "Already voted on this proposal"
+  );
+  
+  // Record nullifier
+  ledger.usedNullifiers.add(nullifier);
+  
+  // Process vote...
+  return true;
+}
+`,
+
+  "midnight://code/examples/hash": `// Hash Functions in Compact
+// Examples of using hash functions for various purposes
+
+include "std";
+
+ledger {
+  commitments: Set<Bytes<32>>;
+  hashedData: Map<Field, Bytes<32>>;
+}
+
+// Basic hash function usage
+witness simpleHash(data: Field): Bytes<32> {
+  // Hash a single field element
+  return hash(data);
+}
+
+// Hash multiple values together
+witness hashMultiple(a: Field, b: Field, c: Field): Bytes<32> {
+  // Concatenate and hash
+  return hash(a, b, c);
+}
+
+// Create a commitment (hash of value + randomness)
+witness createCommitment(value: Field, randomness: Field): Bytes<32> {
+  // Pedersen-style commitment: H(value || randomness)
+  return hash(value, randomness);
+}
+
+// Hash bytes data
+witness hashBytes(data: Bytes<64>): Bytes<32> {
+  return hash(data);
+}
+
+// Create nullifier from secret
+witness createNullifier(secret: Field, publicInput: Field): Bytes<32> {
+  // Nullifier = H(secret || publicInput)
+  // Reveals nothing about secret, but is deterministic
+  return hash(secret, publicInput);
+}
+
+// Verify a commitment matches
+export circuit verifyCommitment(
+  value: Field,
+  randomness: Field,
+  expectedCommitment: Bytes<32>
+): Boolean {
+  const computed = createCommitment(value, randomness);
+  assert(computed == expectedCommitment, "Commitment mismatch");
+  return true;
+}
+
+// Store a hashed value
+export circuit storeHashed(id: Field, data: Field): Bytes<32> {
+  const hashed = simpleHash(data);
+  ledger.hashedData.insert(id, hashed);
+  return hashed;
+}
+
+// Commit-reveal pattern
+export circuit commit(commitment: Bytes<32>): Boolean {
+  assert(!ledger.commitments.contains(commitment), "Already committed");
+  ledger.commitments.add(commitment);
+  return true;
+}
+
+export circuit reveal(value: Field, randomness: Field): Field {
+  const commitment = createCommitment(value, randomness);
+  assert(ledger.commitments.contains(commitment), "No matching commitment");
+  return disclose(value);
+}
+`,
+
+  "midnight://code/examples/simple-counter": `// Simple Counter Contract
+// Minimal example for learning Compact basics
+
+include "std";
+
+// Ledger state - stored on chain
+ledger {
+  counter: Counter;
+}
+
+// Increment the counter by 1
+export circuit increment(): Field {
+  ledger.counter.increment(1);
+  return ledger.counter.value();
+}
+
+// Decrement the counter by 1  
+export circuit decrement(): Field {
+  assert(ledger.counter.value() > 0, "Cannot go below zero");
+  ledger.counter.decrement(1);
+  return ledger.counter.value();
+}
+
+// Get current value
+export circuit get(): Field {
+  return ledger.counter.value();
+}
+
+// Reset to zero (add access control in real apps)
+export circuit reset(): Void {
+  const current = ledger.counter.value();
+  ledger.counter.decrement(current);
+}
+`,
+
+  "midnight://code/templates/basic": `// Basic Compact Contract Template
+// Starting point for new contracts
+
+include "std";
+
+// ============================================
+// LEDGER STATE
+// ============================================
+
+ledger {
+  // Public state (visible on-chain)
+  initialized: Boolean;
+  owner: Opaque<"address">;
+  
+  // Private state (only owner can see)
+  @private
+  secretData: Field;
+}
+
+// ============================================
+// INITIALIZATION
+// ============================================
+
+export circuit initialize(ownerAddress: Opaque<"address">): Boolean {
+  assert(!ledger.initialized, "Already initialized");
+  
+  ledger.owner = ownerAddress;
+  ledger.initialized = true;
+  
+  return true;
+}
+
+// ============================================
+// ACCESS CONTROL
+// ============================================
+
+witness getCaller(): Opaque<"address"> {
+  // Returns the transaction sender
+  return context.caller;
+}
+
+witness isOwner(): Boolean {
+  return getCaller() == ledger.owner;
+}
+
+// ============================================
+// PUBLIC FUNCTIONS
+// ============================================
+
+export circuit publicFunction(input: Field): Field {
+  assert(ledger.initialized, "Not initialized");
+  
+  // Your logic here
+  return input * 2;
+}
+
+// ============================================
+// OWNER-ONLY FUNCTIONS
+// ============================================
+
+export circuit setSecret(newSecret: Field): Void {
+  assert(isOwner(), "Only owner can set secret");
+  ledger.secretData = newSecret;
+}
+
+// ============================================
+// PRIVATE DATA ACCESS
+// ============================================
+
+witness getSecret(): Field {
+  assert(isOwner(), "Only owner can view");
+  return ledger.secretData;
+}
+
+export circuit revealSecret(): Field {
+  assert(isOwner(), "Only owner can reveal");
+  return disclose(getSecret());
+}
+`,
 };
