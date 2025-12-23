@@ -29,10 +29,10 @@ import type {
  * Resolve repository name alias to owner/repo
  */
 export function resolveRepo(
-  repoName?: string
+  repoName?: string | null
 ): { owner: string; repo: string } | null {
-  // Default to compact if not provided
-  const name = repoName || "compact";
+  // Default to compact if not provided or empty
+  const name = repoName?.trim() || "compact";
   const normalized = name.toLowerCase().replace(/^midnightntwrk\//, "");
   const alias = REPO_ALIASES[normalized];
   if (alias) return alias;
@@ -699,8 +699,8 @@ function generateUpgradeRecommendation(
   }
 }
 
-function getRepoType(repoName: string): string {
-  const name = repoName.toLowerCase();
+function getRepoType(repoName: string | undefined | null): string {
+  const name = (repoName || "compact").toLowerCase();
   if (name.includes("counter")) return "counter";
   if (name.includes("bboard")) return "bboard";
   if (name.includes("token") || name.includes("dex")) return "token";
@@ -708,8 +708,11 @@ function getRepoType(repoName: string): string {
   return "all";
 }
 
-function getInstallCommand(repoName: string, version: string): string {
-  const name = repoName.toLowerCase();
+function getInstallCommand(
+  repoName: string | undefined | null,
+  version: string
+): string {
+  const name = (repoName || "compact").toLowerCase();
   if (name === "compact" || name.includes("compact")) {
     return `npx @aspect-sh/pnpm dlx @midnight-ntwrk/create-midnight-app@${version}`;
   }
