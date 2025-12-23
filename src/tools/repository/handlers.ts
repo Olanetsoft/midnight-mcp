@@ -5,7 +5,11 @@
 
 import { githubClient, GitHubCommit } from "../../pipeline/index.js";
 import { releaseTracker } from "../../pipeline/releases.js";
-import { logger, DEFAULT_REPOSITORIES } from "../../utils/index.js";
+import {
+  logger,
+  DEFAULT_REPOSITORIES,
+  SelfCorrectionHints,
+} from "../../utils/index.js";
 import { REPO_ALIASES, EXAMPLES } from "./constants.js";
 import type {
   GetFileInput,
@@ -57,10 +61,10 @@ export async function getFile(input: GetFileInput) {
 
   const repoInfo = resolveRepo(input.repo);
   if (!repoInfo) {
-    return {
-      error: `Unknown repository: ${input.repo}`,
-      suggestion: `Valid repositories: ${Object.keys(REPO_ALIASES).join(", ")}`,
-    };
+    return SelfCorrectionHints.UNKNOWN_REPO(
+      input.repo,
+      Object.keys(REPO_ALIASES)
+    );
   }
 
   const file = await githubClient.getFileContent(
@@ -71,12 +75,10 @@ export async function getFile(input: GetFileInput) {
   );
 
   if (!file) {
-    return {
-      error: `File not found: ${input.path}`,
-      repository: `${repoInfo.owner}/${repoInfo.repo}`,
-      suggestion:
-        "Check the file path and try again. Use midnight:list-examples to see available example files.",
-    };
+    return SelfCorrectionHints.FILE_NOT_FOUND(
+      input.path,
+      `${repoInfo.owner}/${repoInfo.repo}`
+    );
   }
 
   return {
@@ -709,10 +711,10 @@ function getRepoType(repoName: string): string {
 function getInstallCommand(repoName: string, version: string): string {
   const name = repoName.toLowerCase();
   if (name === "compact" || name.includes("compact")) {
-    return `npx @aspect-sh/pnpm dlx @aspect-sh/create-mn-app@${version}`;
+    return `npx @aspect-sh/pnpm dlx @midnight-ntwrk/create-midnight-app@${version}`;
   }
   if (name === "midnight-js" || name.includes("js")) {
-    return `npm install @aspect-sh/midnight-js@${version}`;
+    return `npm install @midnight-ntwrk/midnight-js@${version}`;
   }
-  return `git clone https://github.com/midnightntwrk/${repoName}.git && cd ${repoName} && git checkout ${version}`;
+  return `git clone https://github.com/midnight-ntwrk/${repoName}.git && cd ${repoName} && git checkout ${version}`;
 }
