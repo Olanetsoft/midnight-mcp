@@ -8,6 +8,7 @@ export {
   createUserError,
   formatErrorResponse,
   withErrorHandling,
+  SelfCorrectionHints,
 } from "./errors.js";
 
 // Validation utilities

@@ -75,6 +75,7 @@ const searchToolAnnotations: ToolAnnotations = {
   readOnlyHint: true,
   idempotentHint: true,
   openWorldHint: true,
+  category: "search",
 };
 
 // ============================================================================

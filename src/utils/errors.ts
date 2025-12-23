@@ -42,7 +42,85 @@ export const ErrorCodes = {
   PARSE_ERROR: "PARSE_ERROR",
   CHROMADB_UNAVAILABLE: "CHROMADB_UNAVAILABLE",
   OPENAI_UNAVAILABLE: "OPENAI_UNAVAILABLE",
+  MISSING_PARAM: "MISSING_PARAMETER",
+  INVALID_VERSION: "INVALID_VERSION",
+  SAMPLING_UNAVAILABLE: "SAMPLING_UNAVAILABLE",
 } as const;
+
+/**
+ * LLM-friendly error hints that help the model self-correct
+ * These are designed to give the AI enough context to retry with corrected input
+ */
+export const SelfCorrectionHints = {
+  UNKNOWN_REPO: (repo: string, validRepos: string[]) => ({
+    error: `Unknown repository: '${repo}'`,
+    code: ErrorCodes.UNKNOWN_REPO,
+    suggestion: `Try one of these instead: ${validRepos.slice(0, 8).join(", ")}`,
+    correction: {
+      invalidValue: repo,
+      validValues: validRepos,
+      parameterName: "repo",
+    },
+  }),
+
+  INVALID_VERSION: (version: string, example: string) => ({
+    error: `Invalid version format: '${version}'`,
+    code: ErrorCodes.INVALID_VERSION,
+    suggestion: `Version should be like '${example}'. Check available versions with midnight-get-version-info first.`,
+    correction: {
+      invalidValue: version,
+      expectedFormat: "v1.0.0 or 0.14.0",
+      example,
+    },
+  }),
+
+  MISSING_REQUIRED_PARAM: (paramName: string, toolName: string) => ({
+    error: `Missing required parameter: '${paramName}'`,
+    code: ErrorCodes.MISSING_PARAM,
+    suggestion: `The '${paramName}' parameter is required for ${toolName}. Please provide it.`,
+    correction: {
+      missingParameter: paramName,
+      tool: toolName,
+    },
+  }),
+
+  FILE_NOT_FOUND: (path: string, repo: string, similarPaths?: string[]) => ({
+    error: `File not found: '${path}' in ${repo}`,
+    code: ErrorCodes.NOT_FOUND,
+    suggestion: similarPaths?.length
+      ? `Did you mean: ${similarPaths.join(", ")}?`
+      : `Check the file path. Use midnight-get-file with a different path or list directory contents first.`,
+    correction: {
+      invalidPath: path,
+      ...(similarPaths && { suggestions: similarPaths }),
+    },
+  }),
+
+  SAMPLING_NOT_AVAILABLE: (toolName: string) => ({
+    error: `Sampling capability not available`,
+    code: ErrorCodes.SAMPLING_UNAVAILABLE,
+    suggestion: `${toolName} requires a client that supports sampling (e.g., Claude Desktop). Use a non-AI alternative or switch clients.`,
+    alternatives: {
+      "midnight-generate-contract":
+        "Use midnight-search-compact to find similar contracts as templates",
+      "midnight-review-contract":
+        "Use midnight-analyze-contract for static analysis",
+      "midnight-document-contract": "Manual documentation or inline comments",
+    },
+  }),
+
+  RATE_LIMIT: (retryAfter?: number) => ({
+    error: "GitHub API rate limit exceeded",
+    code: ErrorCodes.RATE_LIMIT,
+    suggestion: retryAfter
+      ? `Wait ${retryAfter} seconds before retrying. Or add GITHUB_TOKEN for higher limits.`
+      : "Add GITHUB_TOKEN to increase from 60 to 5000 requests/hour.",
+    correction: {
+      action: "wait_and_retry",
+      ...(retryAfter && { retryAfterSeconds: retryAfter }),
+    },
+  }),
+};
 
 /**
  * Create user-friendly error from various error types

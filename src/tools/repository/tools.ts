@@ -14,6 +14,8 @@ import {
   getFileAtVersion,
   compareSyntax,
   getLatestSyntax,
+  upgradeCheck,
+  getFullRepoContext,
 } from "./handlers.js";
 
 // Tool definitions for MCP
@@ -45,6 +47,7 @@ export const repositoryTools: ExtendedToolDefinition[] = [
       readOnlyHint: true,
       openWorldHint: true,
       title: "Get Repository File",
+      category: "repository",
     },
     handler: getFile,
   },
@@ -67,6 +70,7 @@ export const repositoryTools: ExtendedToolDefinition[] = [
       readOnlyHint: true,
       idempotentHint: true,
       title: "List Example Contracts",
+      category: "repository",
     },
     handler: listExamples,
   },
@@ -94,6 +98,7 @@ export const repositoryTools: ExtendedToolDefinition[] = [
       readOnlyHint: true,
       openWorldHint: true,
       title: "Get Latest Updates",
+      category: "repository",
     },
     handler: getLatestUpdates,
   },
@@ -116,6 +121,7 @@ export const repositoryTools: ExtendedToolDefinition[] = [
       readOnlyHint: true,
       openWorldHint: true,
       title: "Get Version Info",
+      category: "versioning",
     },
     handler: getVersionInfo,
   },
@@ -142,6 +148,7 @@ export const repositoryTools: ExtendedToolDefinition[] = [
       readOnlyHint: true,
       openWorldHint: true,
       title: "Check Breaking Changes",
+      category: "versioning",
     },
     handler: checkBreakingChanges,
   },
@@ -171,6 +178,7 @@ export const repositoryTools: ExtendedToolDefinition[] = [
       readOnlyHint: true,
       openWorldHint: true,
       title: "Get Migration Guide",
+      category: "versioning",
     },
     handler: getMigrationGuide,
   },
@@ -201,6 +209,7 @@ export const repositoryTools: ExtendedToolDefinition[] = [
       idempotentHint: true,
       openWorldHint: true,
       title: "Get File at Version",
+      category: "versioning",
     },
     handler: getFileAtVersion,
   },
@@ -235,6 +244,7 @@ export const repositoryTools: ExtendedToolDefinition[] = [
       idempotentHint: true,
       openWorldHint: true,
       title: "Compare Syntax Between Versions",
+      category: "versioning",
     },
     handler: compareSyntax,
   },
@@ -256,7 +266,122 @@ export const repositoryTools: ExtendedToolDefinition[] = [
       readOnlyHint: true,
       openWorldHint: true,
       title: "Get Latest Syntax Reference",
+      category: "versioning",
     },
     handler: getLatestSyntax,
+  },
+
+  // ============================================================================
+  // COMPOUND TOOLS - Multi-step operations in a single call
+  // These reduce token usage by 50-70% compared to calling individual tools
+  // ============================================================================
+  {
+    name: "midnight-upgrade-check",
+    description:
+      "🚀 COMPOUND TOOL: Complete upgrade analysis in ONE call. Combines version check + breaking changes + migration guide. Use this instead of calling midnight-get-version-info, midnight-check-breaking-changes, and midnight-get-migration-guide separately. Saves ~60% tokens.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        repo: {
+          type: "string",
+          description: "Repository name (default: 'compact')",
+        },
+        currentVersion: {
+          type: "string",
+          description: "Your current version (e.g., 'v0.14.0', '0.13.5')",
+        },
+      },
+      required: ["currentVersion"],
+    },
+    outputSchema: {
+      type: "object" as const,
+      properties: {
+        repository: { type: "string", description: "Full repository path" },
+        currentVersion: {
+          type: "string",
+          description: "Version being checked",
+        },
+        version: {
+          type: "object",
+          description: "Version summary",
+          properties: {
+            latest: { type: "string" },
+            latestStable: { type: "string" },
+            isOutdated: { type: "boolean" },
+            versionsBehind: { type: "number" },
+          },
+        },
+        breakingChanges: {
+          type: "object",
+          description: "Breaking changes summary",
+          properties: {
+            count: { type: "number" },
+            hasBreakingChanges: { type: "boolean" },
+            items: { type: "array" },
+          },
+        },
+        migration: { type: "object", description: "Migration guide if needed" },
+        urgency: {
+          type: "string",
+          description: "none|low|medium|high|critical",
+        },
+        recommendation: {
+          type: "string",
+          description: "Actionable recommendation",
+        },
+      },
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: true,
+      longRunningHint: true,
+      title: "⚡ Upgrade Check (Compound)",
+      category: "compound",
+    },
+    handler: upgradeCheck,
+  },
+  {
+    name: "midnight-get-repo-context",
+    description:
+      "🚀 COMPOUND TOOL: Get everything needed to start working with a repository in ONE call. Combines version info + syntax reference + relevant examples. Use this at the start of a coding session instead of multiple individual calls. Saves ~50% tokens.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        repo: {
+          type: "string",
+          description: "Repository name (e.g., 'compact', 'midnight-js')",
+        },
+        includeExamples: {
+          type: "boolean",
+          description: "Include example code snippets (default: true)",
+        },
+        includeSyntax: {
+          type: "boolean",
+          description: "Include syntax reference (default: true)",
+        },
+      },
+      required: ["repo"],
+    },
+    outputSchema: {
+      type: "object" as const,
+      properties: {
+        repository: { type: "string", description: "Full repository path" },
+        quickStart: {
+          type: "object",
+          description: "Version and install command",
+        },
+        version: { type: "object", description: "Version details" },
+        syntax: { type: "object", description: "Syntax reference summary" },
+        examples: { type: "array", description: "Relevant examples" },
+      },
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: true,
+      longRunningHint: true,
+      title: "⚡ Get Repo Context (Compound)",
+      category: "compound",
+    },
+    handler: getFullRepoContext,
   },
 ];

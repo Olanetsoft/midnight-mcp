@@ -437,6 +437,129 @@ Rate limits and stats.
 
 ---
 
+### Compound Tools
+
+> ⚡ Compound tools combine multiple operations into a single call, reducing token usage by 50-70%.
+
+#### midnight-upgrade-check
+
+Complete upgrade analysis in one call (combines version-info + breaking-changes + migration-guide).
+
+```typescript
+// Input
+{
+  repo?: string;           // Default: "compact"
+  currentVersion: string;  // e.g., "v0.14.0"
+}
+
+// Output
+{
+  repository: string;
+  currentVersion: string;
+  version: {
+    latest: string;
+    latestStable: string;
+    isOutdated: boolean;
+    versionsBehind: number;
+  };
+  breakingChanges: {
+    count: number;
+    hasBreakingChanges: boolean;
+    items: Array<{ description: string; version: string }>;
+  };
+  migration: {
+    steps: string[];
+    deprecations: string[];
+    newFeatures: string[];
+  } | null;
+  urgency: "none" | "low" | "medium" | "high" | "critical";
+  recommendation: string;
+}
+```
+
+#### midnight-get-repo-context
+
+Everything needed to start working with a repository (combines version-info + syntax + examples).
+
+```typescript
+// Input
+{
+  repo: string;
+  includeExamples?: boolean;  // Default: true
+  includeSyntax?: boolean;    // Default: true
+}
+
+// Output
+{
+  repository: string;
+  quickStart: {
+    version: string;
+    installCommand: string;
+    docsUrl: string;
+  };
+  version: { ... };
+  syntax: { version: string; files: string[]; primaryReference: string | null };
+  examples: Array<{ name: string; description: string; complexity: string }>;
+}
+```
+
+---
+
+### Discovery Tools
+
+> 📋 Discovery tools help AI agents explore available capabilities progressively.
+
+#### midnight-list-tool-categories
+
+List tool categories for progressive exploration.
+
+```typescript
+// Input
+{
+  includeToolCounts?: boolean;  // Default: true
+}
+
+// Output
+{
+  categories: Array<{
+    name: string;
+    description: string;
+    toolCount: number;
+    useCases: string[];
+  }>;
+  totalTools: number;
+  recommendation: string;
+}
+```
+
+#### midnight-list-category-tools
+
+List tools within a specific category.
+
+```typescript
+// Input
+{
+  category: "search" | "analyze" | "repository" | "versioning" | "generation" | "health" | "compound";
+  includeSchemas?: boolean;  // Default: false
+}
+
+// Output
+{
+  category: string;
+  description: string;
+  tools: Array<{
+    name: string;
+    description: string;
+    title: string;
+    isCompound: boolean;
+    requiresSampling: boolean;
+  }>;
+  suggestion: string;
+}
+```
+
+---
+
 ## Resources
 
 Access via `resources/read` with URI.

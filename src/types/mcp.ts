@@ -40,7 +40,38 @@ export interface ToolAnnotations {
    * Human-readable title for display in UIs
    */
   title?: string;
+
+  /**
+   * If true, this tool performs destructive or irreversible actions
+   * Clients should require human confirmation before execution
+   */
+  destructiveHint?: boolean;
+
+  /**
+   * If true, this tool requires explicit human confirmation
+   * before execution (e.g., financial transactions, deletions)
+   */
+  requiresConfirmation?: boolean;
+
+  /**
+   * Tool category for progressive disclosure
+   * Allows clients to group/filter tools by domain
+   */
+  category?: ToolCategory;
 }
+
+/**
+ * Tool categories for progressive disclosure
+ * Clients can initially show categories, then expand to individual tools
+ */
+export type ToolCategory =
+  | "search" // Semantic search tools
+  | "analyze" // Code analysis tools
+  | "repository" // Repository operations
+  | "versioning" // Version and migration tools
+  | "generation" // AI-powered generation (requires sampling)
+  | "health" // Health and status checks
+  | "compound"; // Multi-step compound operations
 
 // ============================================================================
 // Output Schemas

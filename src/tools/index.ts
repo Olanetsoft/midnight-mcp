@@ -30,6 +30,8 @@ export type { HealthCheckInput, GetStatusInput } from "./health.js";
 
 export { generationTools, generationHandlers } from "./generation.js";
 
+export { metaTools, listToolCategories, listCategoryTools } from "./meta.js";
+
 // Re-export types
 export type {
   ExtendedToolDefinition,
@@ -43,9 +45,11 @@ import { analyzeTools } from "./analyze.js";
 import { repositoryTools } from "./repository.js";
 import { healthTools } from "./health.js";
 import { generationTools } from "./generation.js";
+import { metaTools } from "./meta.js";
 import type { ExtendedToolDefinition } from "../types/index.js";
 
 export const allTools: ExtendedToolDefinition[] = [
+  ...metaTools, // Discovery tools first for visibility
   ...searchTools,
   ...analyzeTools,
   ...repositoryTools,

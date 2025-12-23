@@ -73,7 +73,7 @@ Restart your editor after adding the config. **No API keys required.**
 
 ## Features
 
-**19 Tools** — Search, analyze, version tracking, AI generation
+**23 Tools** — Search, analyze, version tracking, AI generation, compound operations
 
 | Category      | Tools                                                                                                                                                                                   |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -81,8 +81,11 @@ Restart your editor after adding the config. **No API keys required.**
 | Analysis      | `midnight-analyze-contract`, `midnight-explain-circuit`                                                                                                                                 |
 | Repository    | `midnight-get-file`, `midnight-list-examples`, `midnight-get-latest-updates`                                                                                                            |
 | Versioning    | `midnight-get-version-info`, `midnight-check-breaking-changes`, `midnight-get-migration-guide`, `midnight-get-file-at-version`, `midnight-compare-syntax`, `midnight-get-latest-syntax` |
-| AI Generation | `midnight-generate-contract`, `midnight-review-contract`, `midnight-document-contract`                                                                                                  |
-| Status        | `midnight-health-check`, `midnight-get-status`                                                                                                                                          |
+| AI Generation | `midnight-generate-contract`, `midnight-review-contract`, `midnight-document-contract` _(requires sampling)_                                                                            |
+| Compound      | `midnight-upgrade-check`, `midnight-get-repo-context` _(saves 50-70% tokens)_                                                                                                           |
+| Discovery     | `midnight-list-tool-categories`, `midnight-list-category-tools`, `midnight-health-check`, `midnight-get-status`                                                                         |
+
+> **Tip:** Use compound tools (`midnight-upgrade-check`, `midnight-get-repo-context`) for efficient multi-step operations in a single call.
 
 **9 Embedded Resources** — Quick references available offline: Compact syntax, SDK API, OpenZeppelin contracts, tokenomics, wallet integration, common errors
 

@@ -5,7 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.9] - 2025-01-24
+## [0.2.0] - 2025-12-23
+
+### Added
+
+- **Compound Tools** - Multi-step operations in a single call (reduces token usage by 50-70%):
+  - `midnight-upgrade-check`: Combines version check + breaking changes + migration guide
+  - `midnight-get-repo-context`: Combines version info + syntax reference + relevant examples
+- **Tool Categories** for progressive disclosure:
+  - `search`, `analyze`, `repository`, `versioning`, `generation`, `health`, `compound`
+  - Enables clients to group/filter tools by domain
+- **Discovery Meta-Tools** for progressive exploration:
+  - `midnight-list-tool-categories`: List all 7 categories with descriptions
+  - `midnight-list-category-tools`: Drill into a category to see its tools
+- **Enhanced Tool Annotations**:
+  - `destructiveHint`: Marks tools that perform irreversible actions
+  - `requiresConfirmation`: Marks tools requiring human confirmation
+  - `category`: Tool category for UI grouping
+- **LLM Self-Correction Hints** in error responses:
+  - Structured errors with `correction` field for AI retry logic
+  - Specific hints for unknown repos, invalid versions, missing params
+  - Alternative suggestions when sampling not available
+
+### Changed
+
+- All 23 tools now include category annotations (19 original + 2 compound + 2 meta)
+- Compound tools marked with ⚡ emoji for visibility
+- Discovery tools marked with 📋 emoji
+- Improved upgrade recommendations with urgency levels (none/low/medium/high/critical)
+
+## [0.1.9] - 2025-12-23
 
 ### Fixed
 

@@ -83,6 +83,26 @@ export const GetLatestSyntaxInputSchema = z.object({
     .describe("Repository name (default: 'compact')"),
 });
 
+// Compound tool schemas - reduce multiple API calls to one
+export const UpgradeCheckInputSchema = z.object({
+  repo: z
+    .string()
+    .default("compact")
+    .describe("Repository name (default: 'compact')"),
+  currentVersion: z
+    .string()
+    .describe("Your current version (e.g., 'v0.14.0', '0.13.5')"),
+});
+
+export const FullRepoContextInputSchema = z.object({
+  repo: z.string().describe("Repository name (e.g., 'compact', 'midnight-js')"),
+  includeExamples: z
+    .boolean()
+    .default(true)
+    .describe("Include example code snippets"),
+  includeSyntax: z.boolean().default(true).describe("Include syntax reference"),
+});
+
 // Inferred types from schemas
 export type GetFileInput = z.infer<typeof GetFileInputSchema>;
 export type ListExamplesInput = z.infer<typeof ListExamplesInputSchema>;
@@ -97,3 +117,5 @@ export type GetMigrationGuideInput = z.infer<
 export type GetFileAtVersionInput = z.infer<typeof GetFileAtVersionInputSchema>;
 export type CompareSyntaxInput = z.infer<typeof CompareSyntaxInputSchema>;
 export type GetLatestSyntaxInput = z.infer<typeof GetLatestSyntaxInputSchema>;
+export type UpgradeCheckInput = z.infer<typeof UpgradeCheckInputSchema>;
+export type FullRepoContextInput = z.infer<typeof FullRepoContextInputSchema>;

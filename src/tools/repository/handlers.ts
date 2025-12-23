@@ -5,7 +5,11 @@
 
 import { githubClient, GitHubCommit } from "../../pipeline/index.js";
 import { releaseTracker } from "../../pipeline/releases.js";
-import { logger, DEFAULT_REPOSITORIES } from "../../utils/index.js";
+import {
+  logger,
+  DEFAULT_REPOSITORIES,
+  SelfCorrectionHints,
+} from "../../utils/index.js";
 import { REPO_ALIASES, EXAMPLES } from "./constants.js";
 import type {
   GetFileInput,
@@ -17,6 +21,8 @@ import type {
   GetFileAtVersionInput,
   CompareSyntaxInput,
   GetLatestSyntaxInput,
+  UpgradeCheckInput,
+  FullRepoContextInput,
 } from "./schemas.js";
 
 /**
@@ -55,10 +61,10 @@ export async function getFile(input: GetFileInput) {
 
   const repoInfo = resolveRepo(input.repo);
   if (!repoInfo) {
-    return {
-      error: `Unknown repository: ${input.repo}`,
-      suggestion: `Valid repositories: ${Object.keys(REPO_ALIASES).join(", ")}`,
-    };
+    return SelfCorrectionHints.UNKNOWN_REPO(
+      input.repo,
+      Object.keys(REPO_ALIASES)
+    );
   }
 
   const file = await githubClient.getFileContent(
@@ -69,12 +75,10 @@ export async function getFile(input: GetFileInput) {
   );
 
   if (!file) {
-    return {
-      error: `File not found: ${input.path}`,
-      repository: `${repoInfo.owner}/${repoInfo.repo}`,
-      suggestion:
-        "Check the file path and try again. Use midnight:list-examples to see available example files.",
-    };
+    return SelfCorrectionHints.FILE_NOT_FOUND(
+      input.path,
+      `${repoInfo.owner}/${repoInfo.repo}`
+    );
   }
 
   return {
@@ -465,4 +469,252 @@ export async function getLatestSyntax(input: GetLatestSyntaxInput) {
     })),
     note: `This is the authoritative syntax reference at version ${reference.version}. Use this to ensure contracts are compilable.`,
   };
+}
+
+// ============================================================================
+// COMPOUND TOOLS - Reduce multiple API calls to single operations
+// These tools combine related operations to minimize round-trips and token usage
+// ============================================================================
+
+/**
+ * Compound tool: Full upgrade check
+ * Combines: getVersionInfo + checkBreakingChanges + getMigrationGuide
+ * Reduces 3 tool calls to 1, saving ~60% tokens
+ */
+export async function upgradeCheck(input: UpgradeCheckInput) {
+  const repoName = input?.repo || "compact";
+  const currentVersion = input.currentVersion;
+
+  logger.debug("Running compound upgrade check", {
+    repo: repoName,
+    currentVersion,
+  });
+
+  const resolved = resolveRepo(repoName);
+  if (!resolved) {
+    throw new Error(
+      `Unknown repository: ${repoName}. Available: ${Object.keys(REPO_ALIASES).join(", ")}`
+    );
+  }
+
+  // Fetch all data in parallel
+  const [versionInfo, outdatedInfo, breakingChanges] = await Promise.all([
+    releaseTracker.getVersionInfo(resolved.owner, resolved.repo),
+    releaseTracker.isOutdated(resolved.owner, resolved.repo, currentVersion),
+    releaseTracker.getBreakingChangesSince(
+      resolved.owner,
+      resolved.repo,
+      currentVersion
+    ),
+  ]);
+
+  const latestVersion =
+    versionInfo.latestStableRelease?.tag || versionInfo.latestRelease?.tag;
+
+  // Only fetch migration guide if there are breaking changes
+  let migrationGuide = null;
+  if (breakingChanges.length > 0 && latestVersion) {
+    migrationGuide = await releaseTracker.getMigrationGuide(
+      resolved.owner,
+      resolved.repo,
+      currentVersion,
+      latestVersion
+    );
+  }
+
+  // Compute upgrade urgency
+  const urgency = computeUpgradeUrgency(outdatedInfo, breakingChanges.length);
+
+  return {
+    repository: `${resolved.owner}/${resolved.repo}`,
+    currentVersion,
+
+    // Version summary
+    version: {
+      latest: latestVersion || "No releases",
+      latestStable:
+        versionInfo.latestStableRelease?.tag || "No stable releases",
+      publishedAt: versionInfo.latestRelease?.publishedAt || null,
+      isOutdated: outdatedInfo.isOutdated,
+      versionsBehind: outdatedInfo.versionsBehind,
+    },
+
+    // Breaking changes summary
+    breakingChanges: {
+      count: breakingChanges.length,
+      hasBreakingChanges: breakingChanges.length > 0,
+      items: breakingChanges.slice(0, 10), // Limit to avoid token bloat
+    },
+
+    // Migration guide (only if needed)
+    migration: migrationGuide
+      ? {
+          steps: migrationGuide.migrationSteps,
+          deprecations: migrationGuide.deprecations,
+          newFeatures: migrationGuide.newFeatures.slice(0, 5),
+        }
+      : null,
+
+    // Actionable recommendation
+    urgency,
+    recommendation: generateUpgradeRecommendation(
+      urgency,
+      breakingChanges.length,
+      outdatedInfo
+    ),
+  };
+}
+
+/**
+ * Compound tool: Full repository context
+ * Combines: getVersionInfo + getLatestSyntax + listExamples (filtered)
+ * Provides everything needed to start working with a repo
+ */
+export async function getFullRepoContext(input: FullRepoContextInput) {
+  const repoName = input?.repo || "compact";
+
+  logger.debug("Getting full repo context", { repo: repoName });
+
+  const resolved = resolveRepo(repoName);
+  if (!resolved) {
+    throw new Error(
+      `Unknown repository: ${repoName}. Available: ${Object.keys(REPO_ALIASES).join(", ")}`
+    );
+  }
+
+  // Fetch version info
+  const versionInfo = await releaseTracker.getVersionInfo(
+    resolved.owner,
+    resolved.repo
+  );
+  const version =
+    versionInfo.latestStableRelease?.tag ||
+    versionInfo.latestRelease?.tag ||
+    "main";
+
+  // Conditionally fetch syntax reference
+  let syntaxRef = null;
+  if (input.includeSyntax !== false) {
+    syntaxRef = await releaseTracker.getLatestSyntaxReference(
+      resolved.owner,
+      resolved.repo
+    );
+  }
+
+  // Get relevant examples for this repo
+  let examples: Array<{
+    name: string;
+    description: string;
+    complexity: string;
+  }> = [];
+  if (input.includeExamples !== false) {
+    // Filter examples relevant to this repo type
+    const repoType = getRepoType(repoName);
+    examples = EXAMPLES.filter(
+      (ex) =>
+        repoType === "all" || ex.category === repoType || repoType === "compact"
+    )
+      .slice(0, 5)
+      .map((ex) => ({
+        name: ex.name,
+        description: ex.description,
+        complexity: ex.complexity,
+      }));
+  }
+
+  return {
+    repository: `${resolved.owner}/${resolved.repo}`,
+
+    // Quick start info
+    quickStart: {
+      version,
+      installCommand: getInstallCommand(repoName, version),
+      docsUrl: `https://github.com/${resolved.owner}/${resolved.repo}`,
+    },
+
+    // Version context
+    version: {
+      current: version,
+      stable: versionInfo.latestStableRelease?.tag || null,
+      publishedAt: versionInfo.latestRelease?.publishedAt || null,
+      recentReleases: versionInfo.recentReleases.slice(0, 3).map((r) => ({
+        tag: r.tag,
+        date: r.publishedAt.split("T")[0],
+      })),
+    },
+
+    // Syntax reference (condensed)
+    syntax: syntaxRef
+      ? {
+          version: syntaxRef.version,
+          files: syntaxRef.syntaxFiles.map((f) => f.path),
+          // Include first file content as primary reference
+          primaryReference:
+            syntaxRef.syntaxFiles[0]?.content?.slice(0, 2000) || null,
+        }
+      : null,
+
+    // Relevant examples
+    examples,
+
+    note: `Use this context to write ${repoName} code at version ${version}. For detailed syntax, use midnight-get-latest-syntax.`,
+  };
+}
+
+// Helper functions for compound tools
+
+function computeUpgradeUrgency(
+  outdatedInfo: {
+    isOutdated: boolean;
+    hasBreakingChanges: boolean;
+    versionsBehind: number;
+  },
+  breakingCount: number
+): "none" | "low" | "medium" | "high" | "critical" {
+  if (!outdatedInfo.isOutdated) return "none";
+  if (breakingCount === 0 && outdatedInfo.versionsBehind <= 2) return "low";
+  if (breakingCount <= 2 && outdatedInfo.versionsBehind <= 5) return "medium";
+  if (breakingCount <= 5) return "high";
+  return "critical";
+}
+
+function generateUpgradeRecommendation(
+  urgency: string,
+  breakingCount: number,
+  outdatedInfo: { isOutdated: boolean; versionsBehind: number }
+): string {
+  switch (urgency) {
+    case "none":
+      return "✅ You're on the latest version. No action needed.";
+    case "low":
+      return `📦 Minor update available (${outdatedInfo.versionsBehind} versions behind). Safe to upgrade at your convenience.`;
+    case "medium":
+      return `⚠️ Update recommended. ${breakingCount} breaking change(s) to review. Plan upgrade within 2 weeks.`;
+    case "high":
+      return `🔶 Important update. ${breakingCount} breaking changes require attention. Schedule upgrade soon.`;
+    case "critical":
+      return `🚨 Critical update needed! ${breakingCount} breaking changes and ${outdatedInfo.versionsBehind} versions behind. Upgrade immediately.`;
+    default:
+      return "Check the breaking changes and plan your upgrade.";
+  }
+}
+
+function getRepoType(repoName: string): string {
+  const name = repoName.toLowerCase();
+  if (name.includes("counter")) return "counter";
+  if (name.includes("bboard")) return "bboard";
+  if (name.includes("token") || name.includes("dex")) return "token";
+  if (name.includes("voting")) return "voting";
+  return "all";
+}
+
+function getInstallCommand(repoName: string, version: string): string {
+  const name = repoName.toLowerCase();
+  if (name === "compact" || name.includes("compact")) {
+    return `npx @aspect-sh/pnpm dlx @midnight-ntwrk/create-midnight-app@${version}`;
+  }
+  if (name === "midnight-js" || name.includes("js")) {
+    return `npm install @midnight-ntwrk/midnight-js@${version}`;
+  }
+  return `git clone https://github.com/midnight-ntwrk/${repoName}.git && cd ${repoName} && git checkout ${version}`;
 }
