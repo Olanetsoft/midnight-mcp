@@ -22,8 +22,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Repos to monitor
-          REPOS="midnightntwrk/compact midnightntwrk/midnight-js midnightntwrk/midnight-docs"
+          # All indexed repositories
+          REPOS="
+            midnightntwrk/compact
+            midnightntwrk/midnight-js
+            midnightntwrk/midnight-docs
+            midnightntwrk/example-counter
+            midnightntwrk/example-bboard
+            midnightntwrk/example-dex
+            midnightntwrk/create-mn-app
+            midnightntwrk/midnight-wallet
+            midnightntwrk/midnight-indexer
+            midnightntwrk/midnight-node-docker
+            midnightntwrk/midnight-dapp-connector-api
+            midnightntwrk/compact-tree-sitter
+            midnightntwrk/setup-compact-action
+            midnightntwrk/midnight-awesome-dapps
+            midnightntwrk/contributor-hub
+            OpenZeppelin/compact-contracts
+            OpenZeppelin/midnight-apps
+            bricktowers/midnight-seabattle
+            bricktowers/midnight-identity
+            bricktowers/midnight-rwa
+            MeshJS/midnight-starter-template
+            midnames/core
+          "
 
           SHOULD_REINDEX="false"
           SIX_HOURS_AGO=$(date -u -d '6 hours ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-6H +%Y-%m-%dT%H:%M:%SZ)
