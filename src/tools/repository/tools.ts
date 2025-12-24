@@ -393,7 +393,13 @@ export const repositoryTools: ExtendedToolDefinition[] = [
   {
     name: "midnight-validate-contract",
     description:
-      "🔍 PRIMARY VERIFICATION: Compile and validate a Compact contract using the ACTUAL Compact compiler. **ALWAYS use this tool first** when verifying contract code - it catches real compilation errors that static analysis cannot detect. Returns detailed error messages with line numbers, suggested fixes, and actionable guidance. If the compiler is not installed, it will provide installation instructions. Accepts either source code directly OR a file path to a .compact file. For contracts you generate, ALWAYS validate with this tool before presenting to the user.",
+      "� REQUIRED - ALWAYS CALL THIS FIRST: Compile a Compact contract using the REAL compiler. " +
+      "⚠️ CRITICAL: You MUST call this tool BEFORE telling the user a contract works or is correct. " +
+      "Static analysis tools like 'extract-contract-structure' or 'analyze-contract' CANNOT verify compilation - they miss semantic errors like: " +
+      "(1) sealed fields require constructor, (2) constructor params need disclose(), (3) export circuits cannot modify sealed fields. " +
+      "This tool runs the ACTUAL Compact compiler and returns real errors with line numbers. " +
+      "If compiler not installed, it provides installation instructions. " +
+      "WORKFLOW: Generate code → Call this tool → Fix errors → Repeat until success → THEN present to user.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -494,7 +500,12 @@ export const repositoryTools: ExtendedToolDefinition[] = [
   {
     name: "midnight-extract-contract-structure",
     description:
-      "📋 STATIC ANALYSIS (not verification): Extract the structure of a Compact contract and detect common issues. Returns circuits, witnesses, ledger items, types, structs, enums, and **potentialIssues** (module-level const, stdlib collisions, sealed+export conflicts). **WARNING: This does NOT verify compilation** - use 'midnight-validate-contract' for actual compiler verification. Use this tool for: (1) understanding contract structure, (2) quick pre-checks before compilation, (3) fallback analysis when compiler unavailable. Do NOT claim a contract 'compiles correctly' based only on this tool.",
+      "⚠️ STATIC ANALYSIS ONLY - NOT A COMPILER: Extracts contract structure (circuits, witnesses, ledger) and detects common patterns. " +
+      "🚫 THIS TOOL CANNOT VERIFY COMPILATION. It will NOT catch: sealed field rules, disclose() requirements, type mismatches, or semantic errors. " +
+      "✅ USE FOR: Understanding structure, quick pattern checks, fallback when compiler unavailable. " +
+      "❌ NEVER USE TO: Verify a contract works, claim code 'compiles correctly', or validate before presenting to user. " +
+      "👉 ALWAYS call 'midnight-validate-contract' FIRST to actually compile the code. " +
+      "Detects: module-level const, stdlib collisions, sealed+export conflicts, missing disclose(), Counter.value access, division operator.",
     inputSchema: {
       type: "object" as const,
       properties: {

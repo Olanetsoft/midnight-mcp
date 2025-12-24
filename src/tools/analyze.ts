@@ -455,7 +455,11 @@ export const analyzeTools: ExtendedToolDefinition[] = [
   {
     name: "midnight-analyze-contract",
     description:
-      "Analyze a Compact smart contract for structure, patterns, and potential security issues. Returns detailed breakdown of circuits, witnesses, ledger state, and recommendations.",
+      "⚠️ STATIC ANALYSIS ONLY - Analyze contract structure and patterns. " +
+      "🚫 THIS DOES NOT COMPILE THE CONTRACT. Cannot catch: sealed field rules, disclose() requirements, semantic errors. " +
+      "👉 ALWAYS call 'midnight-validate-contract' FIRST to verify the code actually compiles. " +
+      "Use this for: understanding structure, security pattern analysis, recommendations. " +
+      "NEVER claim a contract 'works' or 'compiles' based on this tool alone.",
     inputSchema: {
       type: "object" as const,
       properties: {

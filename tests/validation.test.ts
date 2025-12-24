@@ -551,4 +551,169 @@ export circuit test(): Field {
     if (!result.success) return;
     expect(result.message).toContain("potential issue");
   });
+
+  it("should detect division operator usage", async () => {
+    const code = `pragma language_version >= 0.16;
+
+export circuit divide(a: Uint<64>, b: Uint<64>): Uint<64> {
+  return a / b;
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.potentialIssues).toBeDefined();
+    expect(
+      result.potentialIssues!.some((i) => i.type === "unsupported_division")
+    ).toBe(true);
+    const division = result.potentialIssues!.find(
+      (i) => i.type === "unsupported_division"
+    );
+    expect(division?.message).toContain("not supported");
+    expect(division?.suggestion).toContain("witness");
+  });
+
+  it("should detect Counter.value access", async () => {
+    const code = `pragma language_version >= 0.16;
+
+ledger gameCount: Counter;
+
+export circuit getCount(): Uint<64> {
+  return gameCount.value;
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.potentialIssues).toBeDefined();
+    expect(
+      result.potentialIssues!.some((i) => i.type === "invalid_counter_access")
+    ).toBe(true);
+    const counter = result.potentialIssues!.find(
+      (i) => i.type === "invalid_counter_access"
+    );
+    expect(counter?.message).toContain("gameCount");
+    expect(counter?.suggestion).toContain("increment");
+  });
+
+  it("should warn about potential Uint overflow in multiplication", async () => {
+    const code = `pragma language_version >= 0.16;
+
+witness getQuotient(dividend: Uint<64>, divisor: Uint<64>): Uint<64>;
+
+export circuit verifyDivision(dividend: Uint<64>, divisor: Uint<64>): [] {
+  const quotient = getQuotient(dividend, divisor);
+  assert quotient * divisor == dividend;
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.potentialIssues).toBeDefined();
+    expect(
+      result.potentialIssues!.some((i) => i.type === "potential_overflow")
+    ).toBe(true);
+    const overflow = result.potentialIssues!.find(
+      (i) => i.type === "potential_overflow"
+    );
+    expect(overflow?.suggestion).toContain("Field");
+  });
+
+  it("should warn about undisclosed witness in conditional", async () => {
+    const code = `pragma language_version >= 0.16;
+
+witness secret: Uint<64>;
+
+export circuit checkSecret(expected: Uint<64>): [] {
+  if (secret == expected) {
+    // do something
+  }
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.potentialIssues).toBeDefined();
+    expect(
+      result.potentialIssues!.some(
+        (i) => i.type === "undisclosed_witness_conditional"
+      )
+    ).toBe(true);
+    const disclosure = result.potentialIssues!.find(
+      (i) => i.type === "undisclosed_witness_conditional"
+    );
+    expect(disclosure?.suggestion).toContain("disclose");
+  });
+
+  it("should not flag division in comments", async () => {
+    const code = `pragma language_version >= 0.16;
+
+// This is a comment about a / b division
+export circuit add(a: Uint<64>, b: Uint<64>): Uint<64> {
+  return a + b;
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    const division = result.potentialIssues?.find(
+      (i) => i.type === "unsupported_division"
+    );
+    expect(division).toBeUndefined();
+  });
+
+  it("should detect constructor params assigned to ledger without disclose", async () => {
+    const code = `pragma language_version >= 0.16;
+
+sealed ledger tokenName: Bytes<32>;
+sealed ledger tokenSymbol: Bytes<8>;
+
+constructor(name: Bytes<32>, symbol: Bytes<8>) {
+  tokenName = name;
+  tokenSymbol = symbol;
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.potentialIssues).toBeDefined();
+    expect(
+      result.potentialIssues!.some(
+        (i) => i.type === "undisclosed_constructor_param"
+      )
+    ).toBe(true);
+    const disclosure = result.potentialIssues!.find(
+      (i) => i.type === "undisclosed_constructor_param"
+    );
+    expect(disclosure?.message).toContain("name");
+    expect(disclosure?.suggestion).toContain("disclose");
+  });
+
+  it("should not flag constructor params when disclose is used", async () => {
+    const code = `pragma language_version >= 0.16;
+
+sealed ledger tokenName: Bytes<32>;
+sealed ledger tokenSymbol: Bytes<8>;
+
+constructor(name: Bytes<32>, symbol: Bytes<8>) {
+  tokenName = disclose(name);
+  tokenSymbol = disclose(symbol);
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    // Should not have undisclosed_constructor_param issue
+    const disclosure = result.potentialIssues?.find(
+      (i) => i.type === "undisclosed_constructor_param"
+    );
+    expect(disclosure).toBeUndefined();
+  });
 });

@@ -1589,6 +1589,157 @@ export async function extractContractStructure(
     }
   }
 
+  // 6. Detect division operator usage (not supported in Compact)
+  const divisionPattern = /[^/]\/[^/*]/g;
+  let divMatch;
+  while ((divMatch = divisionPattern.exec(code)) !== null) {
+    // Skip if inside a comment
+    const beforeDiv = code.substring(0, divMatch.index);
+    const lastLineStart = beforeDiv.lastIndexOf("\n") + 1;
+    const lineContent = beforeDiv.substring(lastLineStart);
+    if (lineContent.includes("//")) continue;
+
+    const lineNum = lineByIndex[divMatch.index] || 1;
+    potentialIssues.push({
+      type: "unsupported_division",
+      line: lineNum,
+      message: `Division operator '/' is not supported in Compact`,
+      suggestion: `Use a witness-based division pattern: 'witness divideWithRemainder(a, b): [quotient, remainder]' with on-chain verification`,
+      severity: "error",
+    });
+    break; // Only warn once
+  }
+
+  // 7. Detect Counter.value access (Counter only has .increment())
+  const counterValuePattern = /(\w+)\.value\b/g;
+  let counterMatch;
+  while ((counterMatch = counterValuePattern.exec(code)) !== null) {
+    const varName = counterMatch[1];
+    // Check if this variable is a Counter type
+    const counterLedger = ledgerItems.find(
+      (l) => l.name === varName && l.type === "Counter"
+    );
+    if (counterLedger) {
+      const lineNum = lineByIndex[counterMatch.index] || 1;
+      potentialIssues.push({
+        type: "invalid_counter_access",
+        line: lineNum,
+        message: `Counter type '${varName}' does not have a '.value' property`,
+        suggestion: `Counter only has '.increment(n)'. Use 'Uint<32>' or 'Uint<64>' instead if you need to read the value`,
+        severity: "error",
+      });
+    }
+  }
+
+  // 8. Detect potential Uint overflow in multiplication (suggest Field casting)
+  const multiplyPattern =
+    /(\w+)\s*\*\s*(\w+)(?:\s*\+\s*\w+)?\s*(?:as\s+Uint|==)/g;
+  let multMatch;
+  while ((multMatch = multiplyPattern.exec(code)) !== null) {
+    // Check if operands are likely Uint types and not already cast to Field
+    const beforeMult = code.substring(
+      Math.max(0, multMatch.index - 200),
+      multMatch.index
+    );
+    const afterMult = code.substring(
+      multMatch.index,
+      multMatch.index + multMatch[0].length + 50
+    );
+
+    // Skip if already casting to Field
+    if (afterMult.includes("as Field") || beforeMult.includes("as Field"))
+      continue;
+
+    // Check if this looks like a verification pattern (common in witness verification)
+    if (/assert|==/.test(afterMult)) {
+      const lineNum = lineByIndex[multMatch.index] || 1;
+      potentialIssues.push({
+        type: "potential_overflow",
+        line: lineNum,
+        message: `Multiplication '${multMatch[1]} * ${multMatch[2]}' may overflow Uint bounds`,
+        suggestion: `Cast operands to Field for safe arithmetic: '(${multMatch[1]} as Field) * (${multMatch[2]} as Field)'`,
+        severity: "warning",
+      });
+      break; // Only warn once
+    }
+  }
+
+  // 9. Detect witness/private values used in conditionals without disclose()
+  // Look for patterns like: if (witnessVar ...) or if (param == privateValue)
+  const witnessNames = witnesses.map((w) => w.name);
+  const ifPattern = /if\s*\(([^)]+)\)/g;
+  let ifMatch;
+  while ((ifMatch = ifPattern.exec(code)) !== null) {
+    const condition = ifMatch[1];
+    // Check if condition uses a witness value without disclose
+    for (const witnessName of witnessNames) {
+      if (
+        condition.includes(witnessName) &&
+        !condition.includes(`disclose(${witnessName}`) &&
+        !condition.includes("disclose(")
+      ) {
+        const lineNum = lineByIndex[ifMatch.index] || 1;
+        potentialIssues.push({
+          type: "undisclosed_witness_conditional",
+          line: lineNum,
+          message: `Witness value '${witnessName}' used in conditional without disclose()`,
+          suggestion: `Wrap witness comparisons in disclose(): 'if (disclose(${witnessName} == expected))'`,
+          severity: "warning",
+        });
+        break;
+      }
+    }
+  }
+
+  // 10. Detect constructor parameters assigned to ledger without disclose()
+  // Constructor parameters are treated as witness values and need disclose() when written to ledger
+  const constructorMatch = code.match(
+    /constructor\s*\(([^)]*)\)\s*\{([\s\S]*?)(?=\n\s*(?:export|circuit|witness|ledger|constructor|\}|$))/
+  );
+  if (constructorMatch) {
+    const paramsStr = constructorMatch[1];
+    const constructorBody = constructorMatch[2];
+
+    // Extract constructor parameter names
+    const paramPattern = /(\w+)\s*:\s*[^,)]+/g;
+    const constructorParams: string[] = [];
+    let paramMatch;
+    while ((paramMatch = paramPattern.exec(paramsStr)) !== null) {
+      constructorParams.push(paramMatch[1]);
+    }
+
+    // Check each parameter for direct assignment to ledger without disclose
+    for (const param of constructorParams) {
+      // Look for direct assignment: ledgerField = param (without disclose)
+      const assignmentPattern = new RegExp(
+        `(\\w+)\\s*=\\s*(?!disclose\\s*\\()${param}\\b`,
+        "g"
+      );
+      let assignMatch;
+      while ((assignMatch = assignmentPattern.exec(constructorBody)) !== null) {
+        const fieldName = assignMatch[1];
+        // Check if the field is a ledger item
+        const isLedgerField = ledgerItems.some((l) => l.name === fieldName);
+        if (isLedgerField) {
+          // Find the line number
+          const beforeAssign = code.substring(
+            0,
+            constructorMatch.index! +
+              constructorMatch[0].indexOf(assignMatch[0])
+          );
+          const lineNum = (beforeAssign.match(/\n/g) || []).length + 1;
+          potentialIssues.push({
+            type: "undisclosed_constructor_param",
+            line: lineNum,
+            message: `Constructor parameter '${param}' assigned to ledger field '${fieldName}' without disclose()`,
+            suggestion: `Wrap in disclose(): '${fieldName} = disclose(${param});'`,
+            severity: "error",
+          });
+        }
+      }
+    }
+  }
+
   const summary = [];
   if (circuits.length > 0) {
     summary.push(`${circuits.length} circuit(s)`);
