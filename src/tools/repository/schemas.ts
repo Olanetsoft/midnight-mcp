@@ -103,40 +103,54 @@ export const FullRepoContextInputSchema = z.object({
   includeSyntax: z.boolean().default(true).describe("Include syntax reference"),
 });
 
-export const ValidateContractInputSchema = z.object({
-  code: z
-    .string()
-    .optional()
-    .describe(
-      "The Compact contract source code to validate (provide this OR filePath)"
-    ),
-  filePath: z
-    .string()
-    .optional()
-    .describe(
-      "Path to a .compact file to validate (alternative to providing code directly)"
-    ),
-  filename: z
-    .string()
-    .optional()
-    .default("contract.compact")
-    .describe("Optional filename for the contract (default: contract.compact)"),
-});
+export const ValidateContractInputSchema = z
+  .object({
+    code: z
+      .string()
+      .optional()
+      .describe(
+        "The Compact contract source code to validate (provide this OR filePath)"
+      ),
+    filePath: z
+      .string()
+      .optional()
+      .describe(
+        "Path to a .compact file to validate (alternative to providing code directly)"
+      ),
+    filename: z
+      .string()
+      .optional()
+      .default("contract.compact")
+      .describe("Optional filename for the contract (default: contract.compact)"),
+  })
+  .refine(
+    (data) => data.code !== undefined || data.filePath !== undefined,
+    {
+      message: "Either 'code' or 'filePath' must be provided",
+    }
+  );
 
-export const ExtractContractStructureInputSchema = z.object({
-  code: z
-    .string()
-    .optional()
-    .describe(
-      "The Compact contract source code to analyze (provide this OR filePath)"
-    ),
-  filePath: z
-    .string()
-    .optional()
-    .describe(
-      "Path to a .compact file to analyze (alternative to providing code directly)"
-    ),
-});
+export const ExtractContractStructureInputSchema = z
+  .object({
+    code: z
+      .string()
+      .optional()
+      .describe(
+        "The Compact contract source code to analyze (provide this OR filePath)"
+      ),
+    filePath: z
+      .string()
+      .optional()
+      .describe(
+        "Path to a .compact file to analyze (alternative to providing code directly)"
+      ),
+  })
+  .refine(
+    (data) => data.code !== undefined || data.filePath !== undefined,
+    {
+      message: "Either 'code' or 'filePath' must be provided",
+    }
+  );
 
 // Inferred types from schemas
 export type GetFileInput = z.infer<typeof GetFileInputSchema>;
