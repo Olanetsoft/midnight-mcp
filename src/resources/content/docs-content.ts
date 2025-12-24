@@ -16,9 +16,13 @@ export const EMBEDDED_DOCS: Record<string, string> = {
 
 A curated syntax reference for Compact - Midnight's smart contract language.
 
+> **Version Note**: This reference is for Compact 0.16+ (current). Some older examples may use deprecated syntax like \`Cell<T>\` wrappers - see "Common Pitfalls" section below.
+
 ## Basic Structure
 
 \`\`\`compact
+pragma language_version >= 0.14.0;
+
 include "std";
 
 ledger {
@@ -146,10 +150,123 @@ export circuit revealSecret(): Field {
 }
 \`\`\`
 
+### Disclosure in Conditionals (IMPORTANT)
+When using witness values in if/else conditions, you MUST explicitly disclose the comparison result:
+
+\`\`\`compact
+// ❌ WRONG - compiler error: "potential witness-value disclosure must be declared"
+witness getSecret(): Field { return 42; }
+export circuit checkValue(guess: Field): Boolean {
+  const secret = getSecret();
+  if (guess == secret) {  // ERROR: implicit disclosure
+    return true;
+  }
+  return false;
+}
+
+// ✅ CORRECT - wrap comparison in disclose()
+export circuit checkValue(guess: Field): Boolean {
+  const secret = getSecret();
+  if (disclose(guess == secret)) {  // Explicitly acknowledge disclosure
+    return true;
+  }
+  return false;
+}
+
+// ✅ Multiple comparisons
+export circuit giveHint(guess: Field): Hint {
+  const secret = getSecret();
+  if (disclose(guess == secret)) {
+    return Hint.correct;
+  } else if (disclose(guess > secret)) {
+    return Hint.too_high;
+  } else {
+    return Hint.too_low;
+  }
+}
+\`\`\`
+
+**Why?** When you branch on a comparison involving private (witness) values, the boolean result becomes observable on-chain. Compact requires explicit acknowledgment via \`disclose()\` to prevent accidental privacy leaks.
+
 ### Assertions
 \`\`\`compact
 assert(condition);                    // Basic assertion
 assert(condition, "Error message");   // With message
+\`\`\`
+
+## Common Pitfalls & Solutions
+
+### 1. Cell<T> Wrapper (Deprecated)
+\`\`\`compact
+// ❌ OLD SYNTAX (pre-0.15) - causes "unbound identifier Cell"
+export ledger myValue: Cell<Field>;
+myValue.write(42);
+const x = myValue.read();
+
+// ✅ CURRENT SYNTAX (0.16+) - direct declaration
+export ledger myValue: Field;
+myValue = 42;
+const x = myValue;
+\`\`\`
+
+### 2. Opaque String Assignment
+\`\`\`compact
+// ❌ WRONG - cannot assign string literals to Opaque
+export ledger message: Opaque<"string">;
+export circuit setMessage(): Void {
+  message = "hello";  // ERROR!
+}
+
+// ✅ CORRECT - use enum for fixed values
+export enum Status { pending, approved, rejected }
+export ledger status: Status;
+export circuit setStatus(): Void {
+  status = Status.approved;  // Works!
+}
+
+// ✅ Or receive Opaque from parameter/witness
+export circuit setMessage(msg: Opaque<"string">): Void {
+  message = msg;  // msg comes from TypeScript
+}
+\`\`\`
+
+### 3. Counter vs Field
+\`\`\`compact
+// Counter has special methods
+export ledger count: Counter;
+count.increment(1);
+count.decrement(1);
+const val = count.value();
+
+// Field uses direct assignment
+export ledger amount: Field;
+amount = amount + 1;
+const val = amount;
+\`\`\`
+
+### 4. Map Initialization
+\`\`\`compact
+// Maps don't need initialization
+export ledger balances: Map<Bytes<32>, Field>;
+
+// Access with .member()
+const balance = balances.member(address);
+balances.insert(address, 100);
+\`\`\`
+
+### 5. Boolean Returns with Witnesses
+\`\`\`compact
+// ❌ WRONG - returns private boolean without disclosure
+export circuit isOwner(): Boolean {
+  const caller = getCaller();  // witness
+  return caller == owner;      // ERROR: undisclosed
+}
+
+// ✅ CORRECT - disclose the result
+export circuit isOwner(): Boolean {
+  const caller = getCaller();
+  return disclose(caller == owner);
+}
 \`\`\`
 `,
 
