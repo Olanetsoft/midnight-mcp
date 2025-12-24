@@ -154,4 +154,14 @@ export const REPOSITORIES: RepoConfig[] = [
   }, // 1st place - LucentLabs (stablecoin)
   { owner: "nel349", repo: "midnight-bank", branch: "main" }, // 2nd place - Private banking
   { owner: "Imdavyking", repo: "zkbadge", branch: "main" }, // 3rd place - ZK identity badges
+
+  // Core Partner - PaimaStudios (Gaming Infrastructure)
+  { owner: "PaimaStudios", repo: "midnight-game-2", branch: "main" }, // Full production game
+  { owner: "PaimaStudios", repo: "midnight-wasm-prover", branch: "main" }, // Browser WASM prover
+  { owner: "PaimaStudios", repo: "midnight-batcher", branch: "main" }, // Transaction batcher
+  {
+    owner: "PaimaStudios",
+    repo: "midnight-impact-rps-example",
+    branch: "main",
+  }, // Low-level Impact VM example
 ];

@@ -302,4 +302,34 @@ export const DEFAULT_REPOSITORIES: RepositoryConfig[] = [
     patterns: ["**/*.compact", "**/*.ts", "**/*.md"],
     exclude: ["node_modules/**", "dist/**"],
   },
+
+  // Core Partner - PaimaStudios (Gaming Infrastructure)
+  {
+    owner: "PaimaStudios",
+    repo: "midnight-game-2",
+    branch: "main",
+    patterns: ["**/*.compact", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.md"],
+    exclude: ["node_modules/**", "dist/**", "phaser/node_modules/**"],
+  },
+  {
+    owner: "PaimaStudios",
+    repo: "midnight-wasm-prover",
+    branch: "main",
+    patterns: ["**/*.rs", "**/*.ts", "**/*.md"],
+    exclude: ["target/**", "node_modules/**", "pkg/**"],
+  },
+  {
+    owner: "PaimaStudios",
+    repo: "midnight-batcher",
+    branch: "main",
+    patterns: ["**/*.rs", "**/*.ts", "**/*.md"],
+    exclude: ["target/**", "node_modules/**"],
+  },
+  {
+    owner: "PaimaStudios",
+    repo: "midnight-impact-rps-example",
+    branch: "main",
+    patterns: ["**/*.rs", "**/*.ts", "**/*.md"],
+    exclude: ["target/**", "node_modules/**", "www/pkg/**"],
+  },
 ];

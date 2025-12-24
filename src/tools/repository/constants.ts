@@ -98,6 +98,24 @@ export const REPO_ALIASES: Record<string, { owner: string; repo: string }> = {
   },
   shipyspace: { owner: "eddex", repo: "midnight-sea-battle-hackathon" },
 
+  // Core Partner - PaimaStudios (Gaming Infrastructure)
+  "midnight-game-2": { owner: "PaimaStudios", repo: "midnight-game-2" },
+  "paima-game": { owner: "PaimaStudios", repo: "midnight-game-2" },
+  "dust-to-dust": { owner: "PaimaStudios", repo: "midnight-game-2" },
+  "midnight-wasm-prover": {
+    owner: "PaimaStudios",
+    repo: "midnight-wasm-prover",
+  },
+  "wasm-prover": { owner: "PaimaStudios", repo: "midnight-wasm-prover" },
+  "midnight-batcher": { owner: "PaimaStudios", repo: "midnight-batcher" },
+  batcher: { owner: "PaimaStudios", repo: "midnight-batcher" },
+  "midnight-impact-rps": {
+    owner: "PaimaStudios",
+    repo: "midnight-impact-rps-example",
+  },
+  "impact-rps": { owner: "PaimaStudios", repo: "midnight-impact-rps-example" },
+  "vm-bindings": { owner: "PaimaStudios", repo: "midnight-impact-rps-example" },
+
   // Mini DApp Hackathon Winners (Sep 2025)
   statera: { owner: "statera-protocol", repo: "statera-protocol-midnight" },
   "statera-protocol": {
@@ -268,6 +286,76 @@ export const EXAMPLES: ExampleDefinition[] = [
       "On-chain badges",
       "Access control",
       "Reputation system",
+    ],
+  },
+  // Core Partner - PaimaStudios (Gaming Infrastructure)
+  {
+    name: "Midnight Game 2 (PaimaStudios)",
+    repository: "PaimaStudios/midnight-game-2",
+    description:
+      "Full production game from core Midnight partner. Complete Phaser frontend, CLI admin tools, and batcher integration. Demonstrates advanced game mechanics with battles, quests, spirits, and upgrades using ZK proofs.",
+    category: "game",
+    complexity: "advanced",
+    mainFile: "contract/src/template.compact",
+    features: [
+      "Phaser game frontend",
+      "Batcher mode (no wallet needed)",
+      "Admin CLI tools",
+      "Battle system circuits",
+      "Quest mechanics",
+      "Spirit upgrades",
+      "Code generation for circuits",
+    ],
+  },
+  {
+    name: "WASM Prover (PaimaStudios)",
+    repository: "PaimaStudios/midnight-wasm-prover",
+    description:
+      "Browser-based WASM ZK prover for Midnight transactions. Enables client-side proving without external services. Essential infrastructure for decentralized DApps.",
+    category: "infrastructure",
+    complexity: "advanced",
+    mainFile: "src/lib.rs",
+    features: [
+      "Browser-based proving",
+      "Multi-threaded WASM",
+      "WebWorker integration",
+      "KZG trusted setup handling",
+      "No server dependency",
+      "Webpack demo included",
+    ],
+  },
+  {
+    name: "Midnight Batcher (PaimaStudios)",
+    repository: "PaimaStudios/midnight-batcher",
+    description:
+      "Transaction batching service for Midnight. Enables wallet-less DApp interactions by handling transaction fees and submission. Production-ready Rust implementation.",
+    category: "infrastructure",
+    complexity: "advanced",
+    mainFile: "src/main.rs",
+    features: [
+      "Wallet-less transactions",
+      "Fee sponsorship",
+      "Contract whitelisting",
+      "Pre-proving service",
+      "WebSocket indexer sync",
+      "Local chain setup scripts",
+    ],
+  },
+  {
+    name: "Impact VM RPS Example (PaimaStudios)",
+    repository: "PaimaStudios/midnight-impact-rps-example",
+    description:
+      "Low-level Impact VM programming example. Shows how to write Midnight contracts without Compact, directly using Impact opcodes and zkir. Rock-Paper-Scissors with commitment schemes.",
+    category: "infrastructure",
+    complexity: "advanced",
+    mainFile: "lib/src/lib.rs",
+    features: [
+      "Impact VM direct programming",
+      "Bypass Compact compiler",
+      "zkir circuit building",
+      "Commitment schemes",
+      "TypeScript WASM bindings",
+      "Full RPS game logic",
     ],
   },
 ];
