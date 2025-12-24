@@ -1411,6 +1411,184 @@ export async function extractContractStructure(
     ledger: ledgerItems.filter((l) => l.isExport).map((l) => l.name),
   };
 
+  // ============================================================================
+  // PRE-COMPILATION ISSUE DETECTION
+  // Catch common mistakes before hitting the compiler
+  // ============================================================================
+
+  const potentialIssues: Array<{
+    type: string;
+    line?: number;
+    message: string;
+    suggestion: string;
+    severity: "error" | "warning";
+  }> = [];
+
+  // Known CompactStandardLibrary exports that shouldn't be redefined
+  const stdlibExports = [
+    "burnAddress",
+    "ownPublicKey",
+    "contractAddress",
+    "default",
+    "disclose",
+    "assert",
+    "pad",
+    "unpad",
+    "Counter",
+    "Map",
+    "Set",
+    "MerkleTree",
+    "Opaque",
+    "Vector",
+  ];
+
+  // 1. Detect module-level const (not supported in Compact)
+  const constPattern = /^const\s+(\w+)\s*:/gm;
+  let constMatch;
+  while ((constMatch = constPattern.exec(code)) !== null) {
+    // Check if this const is inside a circuit block by looking for preceding circuit/constructor
+    const beforeConst = code.substring(0, constMatch.index);
+    const lastCircuitStart = Math.max(
+      beforeConst.lastIndexOf("circuit "),
+      beforeConst.lastIndexOf("constructor {")
+    );
+    const lastCloseBrace = beforeConst.lastIndexOf("}");
+
+    // If no circuit before, or the last } is after the last circuit start, it's module-level
+    if (lastCircuitStart === -1 || lastCloseBrace > lastCircuitStart) {
+      const lineNum = lineByIndex[constMatch.index] || 1;
+      potentialIssues.push({
+        type: "module_level_const",
+        line: lineNum,
+        message: `Module-level 'const ${constMatch[1]}' is not supported in Compact`,
+        suggestion: `Use 'pure circuit ${constMatch[1]}(): <type> { return <value>; }' instead`,
+        severity: "error",
+      });
+    }
+  }
+
+  // 2. Detect standard library name collisions
+  const hasStdlibImport =
+    imports.includes("CompactStandardLibrary") ||
+    code.includes('include "std"');
+
+  if (hasStdlibImport) {
+    // Check circuits for name collisions
+    for (const circuit of circuits) {
+      if (stdlibExports.includes(circuit.name)) {
+        potentialIssues.push({
+          type: "stdlib_name_collision",
+          line: circuit.line,
+          message: `Circuit '${circuit.name}' conflicts with CompactStandardLibrary.${circuit.name}()`,
+          suggestion: `Rename to avoid ambiguity, or remove to use the standard library version`,
+          severity: "error",
+        });
+      }
+    }
+  }
+
+  // 3. Detect sealed + export conflicts
+  const sealedFields: Array<{ name: string; line: number }> = [];
+  const sealedPattern = /sealed\s+ledger\s+(\w+)\s*:/g;
+  let sealedMatch;
+  while ((sealedMatch = sealedPattern.exec(code)) !== null) {
+    const lineNum = lineByIndex[sealedMatch.index] || 1;
+    sealedFields.push({ name: sealedMatch[1], line: lineNum });
+  }
+
+  if (sealedFields.length > 0) {
+    // Check if any exported circuit writes to sealed fields
+    for (const circuit of circuits) {
+      if (circuit.isExport) {
+        // Find the circuit body and check for assignments to sealed fields
+        const circuitBodyMatch = code.match(
+          new RegExp(
+            `(?:export\\s+)?circuit\\s+${circuit.name}\\s*\\([^)]*\\)\\s*:[^{]*\\{([\\s\\S]*?)\\n\\}`,
+            "m"
+          )
+        );
+        if (circuitBodyMatch) {
+          const body = circuitBodyMatch[1];
+          for (const field of sealedFields) {
+            // Check for assignment patterns: fieldName = or fieldName.method(
+            if (
+              new RegExp(`\\b${field.name}\\s*=`).test(body) ||
+              new RegExp(`\\b${field.name}\\s*\\.\\s*\\w+\\s*\\(`).test(body)
+            ) {
+              potentialIssues.push({
+                type: "sealed_export_conflict",
+                line: circuit.line,
+                message: `Exported circuit '${circuit.name}' modifies sealed field '${field.name}'`,
+                suggestion: `Move sealed field initialization to a 'constructor { }' block instead`,
+                severity: "error",
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Detect missing constructor when sealed fields exist but no constructor
+  if (sealedFields.length > 0) {
+    const hasConstructor = /constructor\s*\{/.test(code);
+    if (!hasConstructor) {
+      // Check if there's an initialize-like circuit trying to set sealed fields
+      const initCircuit = circuits.find(
+        (c) =>
+          c.name.toLowerCase().includes("init") ||
+          c.name.toLowerCase() === "setup"
+      );
+      if (initCircuit && initCircuit.isExport) {
+        potentialIssues.push({
+          type: "missing_constructor",
+          line: initCircuit.line,
+          message: `Contract has sealed fields but uses '${initCircuit.name}' instead of constructor`,
+          suggestion: `Sealed fields must be initialized in 'constructor { }', not in exported circuits`,
+          severity: "warning",
+        });
+      }
+    }
+  }
+
+  // 5. Detect potential type mismatches with stdlib functions
+  if (hasStdlibImport) {
+    // Check for burnAddress() used where ZswapCoinPublicKey is expected
+    // burnAddress() returns Either<ZswapCoinPublicKey, ContractAddress>
+    const burnAddressUsages = code.matchAll(/burnAddress\s*\(\s*\)/g);
+    for (const usage of burnAddressUsages) {
+      // Check if it's being passed to a function or assigned
+      const afterUsage = code.substring(
+        usage.index! + usage[0].length,
+        usage.index! + usage[0].length + 50
+      );
+      const beforeUsage = code.substring(
+        Math.max(0, usage.index! - 100),
+        usage.index!
+      );
+
+      // If used in a context expecting ZswapCoinPublicKey (not .left or .right access)
+      if (
+        !afterUsage.startsWith(".left") &&
+        !afterUsage.startsWith(".right") &&
+        !afterUsage.startsWith(".is_left")
+      ) {
+        // Check if it's in a function call or assignment that likely expects ZswapCoinPublicKey
+        if (/\(\s*$/.test(beforeUsage) || /,\s*$/.test(beforeUsage)) {
+          const lineNum = lineByIndex[usage.index!] || 1;
+          potentialIssues.push({
+            type: "stdlib_type_mismatch",
+            line: lineNum,
+            message: `burnAddress() returns Either<ZswapCoinPublicKey, ContractAddress>, not ZswapCoinPublicKey`,
+            suggestion: `Use burnAddress().left for ZswapCoinPublicKey, or define 'pure circuit zeroKey(): ZswapCoinPublicKey { return default<ZswapCoinPublicKey>; }'`,
+            severity: "warning",
+          });
+          break; // Only warn once
+        }
+      }
+    }
+  }
+
   const summary = [];
   if (circuits.length > 0) {
     summary.push(`${circuits.length} circuit(s)`);
@@ -1457,7 +1635,11 @@ export async function extractContractStructure(
       exportedWitnesses: exports.witnesses.length,
       exportedLedger: exports.ledger.length,
     },
+    potentialIssues: potentialIssues.length > 0 ? potentialIssues : undefined,
     summary: summary.length > 0 ? summary.join(", ") : "Empty contract",
-    message: `📋 Contract contains: ${summary.join(", ") || "no definitions found"}`,
+    message:
+      potentialIssues.length > 0
+        ? `⚠️ Found ${potentialIssues.length} potential issue(s). Contract contains: ${summary.join(", ") || "no definitions found"}`
+        : `📋 Contract contains: ${summary.join(", ") || "no definitions found"}`,
   };
 }

@@ -409,3 +409,146 @@ export ledger data: Map<Field, Field>;
     expect(result.structure!.ledgerItems[0].type).toBe("Map<Field, Field>");
   });
 });
+
+describe("Pre-compilation Issue Detection", () => {
+  it("should detect module-level const declarations", async () => {
+    const code = `pragma language_version >= 0.16;
+
+const MAX_VALUE: Uint<128> = 1000;
+
+export circuit getValue(): Uint<128> {
+  return MAX_VALUE;
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.potentialIssues).toBeDefined();
+    expect(result.potentialIssues!.length).toBeGreaterThan(0);
+    expect(result.potentialIssues![0].type).toBe("module_level_const");
+    expect(result.potentialIssues![0].severity).toBe("error");
+    expect(result.potentialIssues![0].suggestion).toContain("pure circuit");
+  });
+
+  it("should detect stdlib name collisions", async () => {
+    const code = `pragma language_version >= 0.16;
+
+import CompactStandardLibrary;
+
+pure circuit burnAddress(): ZswapCoinPublicKey {
+  return default<ZswapCoinPublicKey>;
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.potentialIssues).toBeDefined();
+    expect(
+      result.potentialIssues!.some((i) => i.type === "stdlib_name_collision")
+    ).toBe(true);
+    const collision = result.potentialIssues!.find(
+      (i) => i.type === "stdlib_name_collision"
+    );
+    expect(collision?.message).toContain("burnAddress");
+    expect(collision?.severity).toBe("error");
+  });
+
+  it("should detect sealed + export conflicts", async () => {
+    const code = `pragma language_version >= 0.16;
+
+sealed ledger tokenName: Bytes<32>;
+
+export circuit initialize(name: Bytes<32>): [] {
+  tokenName = disclose(name);
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.potentialIssues).toBeDefined();
+    expect(
+      result.potentialIssues!.some((i) => i.type === "sealed_export_conflict")
+    ).toBe(true);
+    const conflict = result.potentialIssues!.find(
+      (i) => i.type === "sealed_export_conflict"
+    );
+    expect(conflict?.message).toContain("initialize");
+    expect(conflict?.message).toContain("tokenName");
+    expect(conflict?.suggestion).toContain("constructor");
+  });
+
+  it("should not flag const inside circuit blocks", async () => {
+    const code = `pragma language_version >= 0.16;
+
+export circuit getValue(): Uint<128> {
+  const MAX_VALUE: Uint<128> = 1000;
+  return MAX_VALUE;
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    // Should not have module_level_const issue
+    const constIssue = result.potentialIssues?.find(
+      (i) => i.type === "module_level_const"
+    );
+    expect(constIssue).toBeUndefined();
+  });
+
+  it("should not flag stdlib collision when no import", async () => {
+    const code = `pragma language_version >= 0.16;
+
+pure circuit burnAddress(): ZswapCoinPublicKey {
+  return default<ZswapCoinPublicKey>;
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    // Should not have stdlib_name_collision since no import
+    const collision = result.potentialIssues?.find(
+      (i) => i.type === "stdlib_name_collision"
+    );
+    expect(collision).toBeUndefined();
+  });
+
+  it("should warn about missing constructor with sealed fields", async () => {
+    const code = `pragma language_version >= 0.16;
+
+sealed ledger tokenName: Bytes<32>;
+
+export circuit initialize(name: Bytes<32>): [] {
+  tokenName = name;
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.potentialIssues).toBeDefined();
+    expect(
+      result.potentialIssues!.some((i) => i.type === "missing_constructor")
+    ).toBe(true);
+  });
+
+  it("should include issue count in message", async () => {
+    const code = `pragma language_version >= 0.16;
+
+const BAD_CONST: Field = 42;
+
+export circuit test(): Field {
+  return BAD_CONST;
+}
+`;
+    const result = await extractContractStructure({ code });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.message).toContain("potential issue");
+  });
+});
