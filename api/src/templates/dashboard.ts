@@ -8,12 +8,17 @@ import type { Metrics } from "../interfaces";
  * Generate the dashboard HTML page
  */
 export function generateDashboardHtml(metrics: Metrics): string {
+  // Use distribution total for quality score calculation (more accurate than totalQueries)
+  const distributionTotal =
+    metrics.scoreDistribution.high +
+    metrics.scoreDistribution.medium +
+    metrics.scoreDistribution.low;
   const qualityScore =
-    metrics.totalQueries > 0
+    distributionTotal > 0
       ? Math.round(
           (metrics.scoreDistribution.high * 100 +
             metrics.scoreDistribution.medium * 50) /
-            metrics.totalQueries
+            distributionTotal
         )
       : 0;
 

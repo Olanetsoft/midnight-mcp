@@ -121,20 +121,25 @@ export async function loadMetrics(kv: KVNamespace | undefined): Promise<void> {
 }
 
 /**
- * Recalculate score distribution from recent queries
- * This ensures consistency when thresholds change
+ * Recalculate score distribution and average relevance from recent queries
+ * This ensures consistency when thresholds change or data needs recomputation
  */
 function recalculateScoreDistribution(): void {
   const distribution = { high: 0, medium: 0, low: 0 };
+  let totalAvgScore = 0;
 
   for (const q of metrics.recentQueries) {
     if (q.topScore >= 0.7) distribution.high++;
     else if (q.topScore >= 0.4) distribution.medium++;
     else distribution.low++;
+
+    totalAvgScore += q.avgScore;
   }
 
   // Only update if we have recent queries to calculate from
   if (metrics.recentQueries.length > 0) {
     metrics.scoreDistribution = distribution;
+    // Recalculate average relevance from stored query scores
+    metrics.avgRelevanceScore = totalAvgScore / metrics.recentQueries.length;
   }
 }
