@@ -1085,26 +1085,47 @@ export async function extractContractStructure(
     line: number;
   }> = [];
 
-  // Helper to split parameters handling nested angle brackets, square brackets, and parentheses
-  // (e.g., Map<A, B>, [Field, Boolean], (x: Field) => Boolean)
+  // Helper to split parameters handling nested angle brackets, square brackets, parentheses,
+  // and string literals (e.g., Map<A, B>, [Field, Boolean], (x: Field) => Boolean, Opaque<"a, b">)
   const splitParams = (paramsStr: string): string[] => {
     const result: string[] = [];
     let current = "";
     let angleDepth = 0;
     let squareDepth = 0;
     let parenDepth = 0;
+    let inString = false;
+    let stringChar = "";
 
     for (let i = 0; i < paramsStr.length; i++) {
       const ch = paramsStr[i];
-      if (ch === "<") angleDepth++;
-      else if (ch === ">") angleDepth = Math.max(0, angleDepth - 1);
-      else if (ch === "[") squareDepth++;
-      else if (ch === "]") squareDepth = Math.max(0, squareDepth - 1);
-      else if (ch === "(") parenDepth++;
-      else if (ch === ")") parenDepth = Math.max(0, parenDepth - 1);
+
+      // Handle string literals
+      if (
+        (ch === '"' || ch === "'") &&
+        (i === 0 || paramsStr[i - 1] !== "\\")
+      ) {
+        if (!inString) {
+          inString = true;
+          stringChar = ch;
+        } else if (ch === stringChar) {
+          inString = false;
+          stringChar = "";
+        }
+      }
+
+      // Only track depth when not inside a string
+      if (!inString) {
+        if (ch === "<") angleDepth++;
+        else if (ch === ">") angleDepth = Math.max(0, angleDepth - 1);
+        else if (ch === "[") squareDepth++;
+        else if (ch === "]") squareDepth = Math.max(0, squareDepth - 1);
+        else if (ch === "(") parenDepth++;
+        else if (ch === ")") parenDepth = Math.max(0, parenDepth - 1);
+      }
 
       if (
         ch === "," &&
+        !inString &&
         angleDepth === 0 &&
         squareDepth === 0 &&
         parenDepth === 0
