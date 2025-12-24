@@ -85,6 +85,7 @@ npm run deploy
 | Tools     | `compact-tree-sitter`, `setup-compact-action`, `midnight-node-docker`                                                                                                                                              |
 | ZK/Crypto | `halo2`, `midnight-trusted-setup`                                                                                                                                                                                  |
 | Partners  | `OpenZeppelin/compact-contracts`, `OpenZeppelin/midnight-apps`, `bricktowers/midnight-seabattle`, `bricktowers/midnight-identity`, `bricktowers/midnight-rwa`, `MeshJS/midnight-starter-template`, `midnames/core` |
+| Hackathon | `ErickRomeroDev/naval-battle-game_v2` (Edda Labs), `eddex/midnight-sea-battle-hackathon` (ShipySpace)                                                                                                              |
 
 <details>
 <summary><strong>Indexing Configuration</strong></summary>

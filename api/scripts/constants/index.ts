@@ -135,10 +135,14 @@ export const REPOSITORIES: RepoConfig[] = [
   { owner: "OpenZeppelin", repo: "compact-contracts", branch: "main" },
   { owner: "OpenZeppelin", repo: "midnight-apps", branch: "main" }, // LunarSwap DEX
 
-  // Official Partners (🔹 from awesome-dapps)
-  { owner: "bricktowers", repo: "midnight-seabattle", branch: "main" }, // Gaming
+  // Official Partners (from awesome-dapps)
+  { owner: "bricktowers", repo: "midnight-seabattle", branch: "main" }, // Gaming - 1st place Sea Battle hackathon
   { owner: "bricktowers", repo: "midnight-identity", branch: "main" }, // ZK Identity
   { owner: "bricktowers", repo: "midnight-rwa", branch: "main" }, // Real World Assets
   { owner: "MeshJS", repo: "midnight-starter-template", branch: "main" }, // Starter template
   { owner: "midnames", repo: "core", branch: "main" }, // DID registry
+
+  // Sea Battle Hackathon Winners (Feb 2025)
+  { owner: "ErickRomeroDev", repo: "naval-battle-game_v2", branch: "main" }, // 2nd place - Edda Labs
+  { owner: "eddex", repo: "midnight-sea-battle-hackathon", branch: "main" }, // 3rd place - ShipySpace
 ];
