@@ -731,10 +731,6 @@ export async function getFullRepoContext(input: FullRepoContextInput) {
   };
 }
 
-/**
- * Validate a Compact contract by running the compiler
- * This provides pre-compilation validation with detailed error diagnostics
- */
 // Helper functions for compound tools
 
 function computeUpgradeUrgency(

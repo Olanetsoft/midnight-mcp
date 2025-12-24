@@ -56,9 +56,24 @@ function validateFilePath(filePath: string): {
     };
   }
 
-  // Block sensitive paths
-  const blockedPaths = ["/etc", "/var", "/usr", "/bin", "/sbin", "/root"];
-  if (blockedPaths.some((blocked) => normalized.startsWith(blocked))) {
+  // Block sensitive paths (Unix and Windows)
+  const blockedPathsUnix = ["/etc", "/var", "/usr", "/bin", "/sbin", "/root"];
+  const blockedPathsWindows = [
+    "C:\\Windows",
+    "C:\\Program Files",
+    "C:\\Program Files (x86)",
+    "C:\\System32",
+    "C:\\ProgramData",
+  ];
+  const blockedPaths =
+    platform === "win32" ? blockedPathsWindows : blockedPathsUnix;
+
+  const normalizedLower = normalized.toLowerCase();
+  if (
+    blockedPaths.some((blocked) =>
+      normalizedLower.startsWith(blocked.toLowerCase())
+    )
+  ) {
     return {
       valid: false,
       error: "Cannot access system directories",
@@ -349,14 +364,15 @@ import CompactStandardLibrary;
   }
 
   // Check for missing import (common for Counter, Map, etc.)
+  // Use word boundaries to avoid false positives in comments/strings
   const usesStdLib =
-    code.includes("Counter") ||
-    code.includes("Map<") ||
-    code.includes("Set<") ||
-    code.includes("Opaque<");
+    /\bCounter\b/.test(code) ||
+    /\bMap\s*</.test(code) ||
+    /\bSet\s*</.test(code) ||
+    /\bOpaque\s*</.test(code);
   const hasImport =
-    code.includes("import CompactStandardLibrary") ||
-    code.includes('include "std"');
+    /\bimport\s+CompactStandardLibrary\b/.test(code) ||
+    /\binclude\s+"std"/.test(code);
 
   if (usesStdLib && !hasImport) {
     return {
@@ -387,21 +403,50 @@ export ledger counter: Counter;
   // COMPILER CHECK - Verify compiler is available
   // ============================================================================
 
-  let compactPath: string;
-  let compilerVersion: string;
+  let compactPath = "";
+  let compilerVersion = "";
 
   try {
-    // Cross-platform compiler detection
-    const findCommand =
-      platform === "win32" ? "where compact" : "which compact";
-    const { stdout: whichOutput } = await execAsync(findCommand);
-    // On Windows, 'where' may return multiple lines; take the first
-    compactPath = whichOutput.trim().split(/\r?\n/)[0];
+    if (platform === "win32") {
+      // On Windows, avoid the built-in NTFS 'compact.exe' from System32
+      // by iterating through all candidates and verifying each one
+      const { stdout: whereOutput } = await execAsync("where compact.exe");
+      const candidates = whereOutput
+        .trim()
+        .split(/\r?\n/)
+        .filter((line) => line.trim().length > 0);
 
-    const { stdout: versionOutput } = await execAsync(
-      "compact compile --version"
-    );
-    compilerVersion = versionOutput.trim();
+      let found = false;
+      for (const candidate of candidates) {
+        try {
+          const candidatePath = candidate.trim();
+          // Skip Windows System32 compact.exe (NTFS compression utility)
+          if (candidatePath.toLowerCase().includes("system32")) {
+            continue;
+          }
+          const { stdout: versionOutput } = await execAsync(
+            `"${candidatePath}" compile --version`
+          );
+          compactPath = candidatePath;
+          compilerVersion = versionOutput.trim();
+          found = true;
+          break;
+        } catch {
+          // Try next candidate
+        }
+      }
+      if (!found) {
+        throw new Error("Compact compiler not found in PATH");
+      }
+    } else {
+      // Unix: use which to find compact
+      const { stdout: whichOutput } = await execAsync("which compact");
+      compactPath = whichOutput.trim().split(/\r?\n/)[0];
+      const { stdout: versionOutput } = await execAsync(
+        `"${compactPath}" compile --version`
+      );
+      compilerVersion = versionOutput.trim();
+    }
   } catch {
     return {
       success: false,
@@ -510,13 +555,18 @@ export ledger counter: Counter;
     }
 
     // Run compilation
+    // When sourceDir is available (file path provided), run from source directory
+    // to resolve local includes. Otherwise run from temp directory.
     try {
+      const execOptions = {
+        timeout: 60000, // 60 second timeout
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+        cwd: sourceDir || tempDir, // Use source directory for include resolution
+      };
+
       const { stdout, stderr } = await execAsync(
         `compact compile "${contractPath}" "${outputDir}"`,
-        {
-          timeout: 60000, // 60 second timeout
-          maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-        }
+        execOptions
       );
 
       // Compilation succeeded!
@@ -976,8 +1026,10 @@ export async function extractContractStructure(
     };
   }
 
-  // Extract pragma version
-  const pragmaMatch = code.match(/pragma\s+language_version\s*>=?\s*([\d.]+)/);
+  // Extract pragma version (handles >=, >, <=, <, ==, ~ operators)
+  const pragmaMatch = code.match(
+    /pragma\s+language_version\s*(?:>=?|<=?|==|~)\s*([\d.]+)/
+  );
   const languageVersion = pragmaMatch ? pragmaMatch[1] : null;
 
   // Extract imports
@@ -995,17 +1047,41 @@ export async function extractContractStructure(
     isExport: boolean;
     line: number;
   }> = [];
+
+  // Helper to split parameters handling nested angle brackets (e.g., Map<A, B>)
+  const splitParams = (paramsStr: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let angleDepth = 0;
+    let squareDepth = 0;
+
+    for (let i = 0; i < paramsStr.length; i++) {
+      const ch = paramsStr[i];
+      if (ch === "<") angleDepth++;
+      else if (ch === ">") angleDepth = Math.max(0, angleDepth - 1);
+      else if (ch === "[") squareDepth++;
+      else if (ch === "]") squareDepth = Math.max(0, squareDepth - 1);
+
+      if (ch === "," && angleDepth === 0 && squareDepth === 0) {
+        if (current.trim()) result.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    if (current.trim()) result.push(current.trim());
+    return result;
+  };
+
+  // Use a more permissive pattern for return types to handle complex nested types
   const circuitPattern =
-    /(?:(export)\s+)?circuit\s+(\w+)\s*\(([^)]*)\)\s*:\s*(\[[^\]]*\]|[\w<>,\s]+)/g;
+    /(?:(export)\s+)?circuit\s+(\w+)\s*\(([^)]*)\)\s*:\s*([^{\n;]+)/g;
   const lines = code.split("\n");
 
   let circuitMatch;
   while ((circuitMatch = circuitPattern.exec(code)) !== null) {
     const lineNum = code.substring(0, circuitMatch.index).split("\n").length;
-    const params = circuitMatch[3]
-      .split(",")
-      .map((p) => p.trim())
-      .filter((p) => p);
+    const params = splitParams(circuitMatch[3]);
 
     circuits.push({
       name: circuitMatch[2],
