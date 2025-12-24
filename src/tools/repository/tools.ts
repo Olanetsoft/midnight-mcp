@@ -393,7 +393,7 @@ export const repositoryTools: ExtendedToolDefinition[] = [
   {
     name: "midnight-validate-contract",
     description:
-      "🔍 VALIDATION TOOL: Compile and validate a Compact contract BEFORE deployment. This runs the actual Compact compiler to check for syntax errors, type errors, and other issues. Use this after writing or modifying contract code to catch errors early. Requires the Compact CLI to be installed locally. Accepts either source code directly OR a file path to a .compact file.",
+      "🔍 PRIMARY VERIFICATION: Compile and validate a Compact contract using the ACTUAL Compact compiler. **ALWAYS use this tool first** when verifying contract code - it catches real compilation errors that static analysis cannot detect. Returns detailed error messages with line numbers, suggested fixes, and actionable guidance. If the compiler is not installed, it will provide installation instructions. Accepts either source code directly OR a file path to a .compact file. For contracts you generate, ALWAYS validate with this tool before presenting to the user.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -494,7 +494,7 @@ export const repositoryTools: ExtendedToolDefinition[] = [
   {
     name: "midnight-extract-contract-structure",
     description:
-      "📋 ANALYSIS TOOL: Extract the structure of a Compact contract - circuits, witnesses, ledger items, types, structs, and enums. Use this to understand what a contract does without reading all the code. Returns exported and internal definitions with line numbers. Accepts either source code directly OR a file path.",
+      "📋 STATIC ANALYSIS (not verification): Extract the structure of a Compact contract and detect common issues. Returns circuits, witnesses, ledger items, types, structs, enums, and **potentialIssues** (module-level const, stdlib collisions, sealed+export conflicts). **WARNING: This does NOT verify compilation** - use 'midnight-validate-contract' for actual compiler verification. Use this tool for: (1) understanding contract structure, (2) quick pre-checks before compilation, (3) fallback analysis when compiler unavailable. Do NOT claim a contract 'compiles correctly' based only on this tool.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -570,6 +570,28 @@ export const repositoryTools: ExtendedToolDefinition[] = [
         stats: {
           type: "object",
           description: "Counts of each type of definition",
+        },
+        potentialIssues: {
+          type: "array",
+          description:
+            "Common issues detected by static analysis (NOT exhaustive - use validate_contract for real verification)",
+          items: {
+            type: "object",
+            properties: {
+              type: {
+                type: "string",
+                description:
+                  "Issue type: module_level_const, stdlib_name_collision, sealed_export_conflict, missing_constructor, stdlib_type_mismatch",
+              },
+              line: { type: "number" },
+              message: { type: "string" },
+              suggestion: { type: "string" },
+              severity: {
+                type: "string",
+                enum: ["error", "warning"],
+              },
+            },
+          },
         },
         summary: { type: "string" },
         message: { type: "string" },
