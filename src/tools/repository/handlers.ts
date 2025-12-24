@@ -29,9 +29,10 @@ import type {
 } from "./schemas.js";
 import { exec } from "child_process";
 import { promisify } from "util";
-import { writeFile, unlink, mkdir, readFile } from "fs/promises";
+import { writeFile, mkdir, readFile, rm } from "fs/promises";
 import { join, basename, resolve, isAbsolute } from "path";
 import { tmpdir } from "os";
+import { platform } from "process";
 
 // ============================================================================
 // SECURITY & VALIDATION HELPERS
@@ -1107,8 +1108,11 @@ export ledger counter: Counter;
   let compilerVersion: string;
 
   try {
-    const { stdout: whichOutput } = await execAsync("which compact");
-    compactPath = whichOutput.trim();
+    // Cross-platform compiler detection
+    const findCommand = platform === "win32" ? "where compact" : "which compact";
+    const { stdout: whichOutput } = await execAsync(findCommand);
+    // On Windows, 'where' may return multiple lines; take the first
+    compactPath = whichOutput.trim().split(/\r?\n/)[0];
 
     const { stdout: versionOutput } = await execAsync(
       "compact compile --version"
@@ -1328,10 +1332,9 @@ export ledger counter: Counter;
       };
     }
   } finally {
-    // Cleanup temp files
+    // Cleanup temp files (cross-platform)
     try {
-      await unlink(contractPath).catch(() => {});
-      await execAsync(`rm -rf "${tempDir}"`).catch(() => {});
+      await rm(tempDir, { recursive: true, force: true }).catch(() => {});
     } catch {
       // Ignore cleanup errors
     }
