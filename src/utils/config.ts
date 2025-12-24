@@ -263,4 +263,20 @@ export const DEFAULT_REPOSITORIES: RepositoryConfig[] = [
     patterns: ["**/*.compact", "**/*.ts", "**/*.md"],
     exclude: ["node_modules/**", "dist/**"],
   },
+
+  // Sea Battle Hackathon Winners (Feb 2025)
+  {
+    owner: "ErickRomeroDev",
+    repo: "naval-battle-game_v2",
+    branch: "main",
+    patterns: ["**/*.compact", "**/*.ts", "**/*.tsx", "**/*.md"],
+    exclude: ["node_modules/**", "dist/**"],
+  },
+  {
+    owner: "eddex",
+    repo: "midnight-sea-battle-hackathon",
+    branch: "main",
+    patterns: ["**/*.compact", "**/*.ts", "**/*.md"],
+    exclude: ["node_modules/**", "dist/**"],
+  },
 ];

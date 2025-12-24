@@ -88,6 +88,15 @@ export const REPO_ALIASES: Record<string, { owner: string; repo: string }> = {
   starter: { owner: "MeshJS", repo: "midnight-starter-template" },
   midnames: { owner: "midnames", repo: "core" },
   did: { owner: "midnames", repo: "core" },
+
+  // Sea Battle Hackathon Winners (Feb 2025)
+  "naval-battle": { owner: "ErickRomeroDev", repo: "naval-battle-game_v2" },
+  "edda-labs": { owner: "ErickRomeroDev", repo: "naval-battle-game_v2" },
+  "sea-battle-hackathon": {
+    owner: "eddex",
+    repo: "midnight-sea-battle-hackathon",
+  },
+  shipyspace: { owner: "eddex", repo: "midnight-sea-battle-hackathon" },
 };
 
 // Example definitions
@@ -147,6 +156,55 @@ export const EXAMPLES: ExampleDefinition[] = [
       "Privacy-preserving trades",
       "Price calculations",
       "Advanced state management",
+    ],
+  },
+  // Sea Battle Hackathon Winners (Feb 2025)
+  {
+    name: "Sea Battle (Brick Towers)",
+    repository: "bricktowers/midnight-seabattle",
+    description:
+      "1st place hackathon winner. Fully playable battleship game with token staking (100 shielded tBTC). Features ZK-protected ship placements and moves.",
+    category: "game",
+    complexity: "advanced",
+    mainFile: "contract/src/seabattle.compact",
+    features: [
+      "ZK game mechanics",
+      "Shielded token staking",
+      "Turn-based gameplay",
+      "Private state management",
+      "Lace wallet integration",
+    ],
+  },
+  {
+    name: "Naval Battle (Edda Labs)",
+    repository: "ErickRomeroDev/naval-battle-game_v2",
+    description:
+      "2nd place hackathon winner. Clean implementation with 4 ZK circuits: join game, commit grid, start game, make move. Modern drag-and-drop UI.",
+    category: "game",
+    complexity: "intermediate",
+    mainFile: "contract/src/naval.compact",
+    features: [
+      "4 ZK circuits",
+      "Drag-and-drop UI",
+      "Real-time updates",
+      "Clean circuit design",
+      "Open-source docs",
+    ],
+  },
+  {
+    name: "Sea Battle (ShipySpace)",
+    repository: "eddex/midnight-sea-battle-hackathon",
+    description:
+      "3rd place hackathon winner. Great beginner-friendly example showing core game mechanics without centralized server. Good first ZK project reference.",
+    category: "game",
+    complexity: "beginner",
+    mainFile: "contract/src/game.compact",
+    features: [
+      "No centralized server",
+      "Deploy/join/resume games",
+      "Basic ZK patterns",
+      "Beginner friendly",
+      "Clear player interactions",
     ],
   },
 ];
