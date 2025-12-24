@@ -78,6 +78,15 @@ const CATEGORY_INFO: Record<
       "One-shot operations",
     ],
   },
+  validation: {
+    description:
+      "Pre-compilation contract validation using the Compact compiler",
+    useCases: [
+      "Validate contract syntax",
+      "Catch errors before deployment",
+      "Get detailed error diagnostics",
+    ],
+  },
 };
 
 // ============================================================================

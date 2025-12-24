@@ -16,6 +16,8 @@ import {
   getLatestSyntax,
   upgradeCheck,
   getFullRepoContext,
+  validateContract,
+  extractContractStructure,
 } from "./handlers.js";
 
 // Tool definitions for MCP
@@ -383,5 +385,203 @@ export const repositoryTools: ExtendedToolDefinition[] = [
       category: "compound",
     },
     handler: getFullRepoContext,
+  },
+
+  // ============================================================================
+  // VALIDATION TOOLS - Pre-compilation contract validation
+  // ============================================================================
+  {
+    name: "midnight-validate-contract",
+    description:
+      "🔍 VALIDATION TOOL: Compile and validate a Compact contract BEFORE deployment. This runs the actual Compact compiler to check for syntax errors, type errors, and other issues. Use this after writing or modifying contract code to catch errors early. Requires the Compact CLI to be installed locally. Accepts either source code directly OR a file path to a .compact file.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        code: {
+          type: "string",
+          description:
+            "The Compact contract source code to validate (provide this OR filePath)",
+        },
+        filePath: {
+          type: "string",
+          description:
+            "Path to a .compact file to validate (alternative to providing code directly)",
+        },
+        filename: {
+          type: "string",
+          description:
+            "Optional filename for the contract when using code (default: contract.compact)",
+        },
+      },
+      required: [],
+    },
+    outputSchema: {
+      type: "object" as const,
+      properties: {
+        success: {
+          type: "boolean",
+          description: "Whether the contract compiled successfully",
+        },
+        errorType: {
+          type: "string",
+          description:
+            "Category of error: user_error, environment_error, system_error, compilation_error",
+        },
+        compilerInstalled: {
+          type: "boolean",
+          description: "Whether the Compact compiler is available",
+        },
+        compilerVersion: {
+          type: "string",
+          description: "Version of the Compact compiler",
+        },
+        message: { type: "string", description: "Summary message" },
+        errors: {
+          type: "array",
+          description: "List of compilation errors with line numbers",
+          items: {
+            type: "object",
+            properties: {
+              line: { type: "number" },
+              column: { type: "number" },
+              message: { type: "string" },
+              severity: { type: "string" },
+              context: { type: "string" },
+            },
+          },
+        },
+        userAction: {
+          type: "object",
+          description: "What the user needs to do to fix the problem",
+          properties: {
+            problem: { type: "string" },
+            solution: { type: "string" },
+            isUserFault: { type: "boolean" },
+          },
+        },
+        suggestions: {
+          type: "array",
+          description: "Suggestions for fixing errors",
+          items: { type: "string" },
+        },
+        commonFixes: {
+          type: "array",
+          description: "Common fix patterns",
+          items: {
+            type: "object",
+            properties: {
+              pattern: { type: "string" },
+              fix: { type: "string" },
+            },
+          },
+        },
+        installation: {
+          type: "object",
+          description: "Installation instructions if compiler not found",
+        },
+      },
+    },
+    annotations: {
+      readOnlyHint: false, // Creates temp files
+      idempotentHint: true, // Same input = same output
+      openWorldHint: true,
+      longRunningHint: true, // Compilation can take time
+      title: "🔍 Validate Contract",
+      category: "validation",
+    },
+    handler: validateContract,
+  },
+  {
+    name: "midnight-extract-contract-structure",
+    description:
+      "📋 ANALYSIS TOOL: Extract the structure of a Compact contract - circuits, witnesses, ledger items, types, structs, and enums. Use this to understand what a contract does without reading all the code. Returns exported and internal definitions with line numbers. Accepts either source code directly OR a file path.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        code: {
+          type: "string",
+          description:
+            "The Compact contract source code to analyze (provide this OR filePath)",
+        },
+        filePath: {
+          type: "string",
+          description:
+            "Path to a .compact file to analyze (alternative to providing code directly)",
+        },
+      },
+      required: [],
+    },
+    outputSchema: {
+      type: "object" as const,
+      properties: {
+        success: { type: "boolean" },
+        filename: { type: "string" },
+        languageVersion: { type: "string" },
+        imports: { type: "array", items: { type: "string" } },
+        structure: {
+          type: "object",
+          properties: {
+            circuits: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  params: { type: "array", items: { type: "string" } },
+                  returnType: { type: "string" },
+                  isExport: { type: "boolean" },
+                  line: { type: "number" },
+                },
+              },
+            },
+            witnesses: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  type: { type: "string" },
+                  isExport: { type: "boolean" },
+                  line: { type: "number" },
+                },
+              },
+            },
+            ledgerItems: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  type: { type: "string" },
+                  isExport: { type: "boolean" },
+                  line: { type: "number" },
+                },
+              },
+            },
+            types: { type: "array" },
+            structs: { type: "array" },
+            enums: { type: "array" },
+          },
+        },
+        exports: {
+          type: "object",
+          description: "Names of all exported items",
+        },
+        stats: {
+          type: "object",
+          description: "Counts of each type of definition",
+        },
+        summary: { type: "string" },
+        message: { type: "string" },
+      },
+    },
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true,
+      openWorldHint: false,
+      title: "📋 Extract Contract Structure",
+      category: "validation",
+    },
+    handler: extractContractStructure,
   },
 ];

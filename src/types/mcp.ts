@@ -71,7 +71,8 @@ export type ToolCategory =
   | "versioning" // Version and migration tools
   | "generation" // AI-powered generation (requires sampling)
   | "health" // Health and status checks
-  | "compound"; // Multi-step compound operations
+  | "compound" // Multi-step compound operations
+  | "validation"; // Contract validation tools
 
 // ============================================================================
 // Output Schemas

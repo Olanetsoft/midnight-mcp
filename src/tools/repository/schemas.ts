@@ -103,6 +103,41 @@ export const FullRepoContextInputSchema = z.object({
   includeSyntax: z.boolean().default(true).describe("Include syntax reference"),
 });
 
+export const ValidateContractInputSchema = z.object({
+  code: z
+    .string()
+    .optional()
+    .describe(
+      "The Compact contract source code to validate (provide this OR filePath)"
+    ),
+  filePath: z
+    .string()
+    .optional()
+    .describe(
+      "Path to a .compact file to validate (alternative to providing code directly)"
+    ),
+  filename: z
+    .string()
+    .optional()
+    .default("contract.compact")
+    .describe("Optional filename for the contract (default: contract.compact)"),
+});
+
+export const ExtractContractStructureInputSchema = z.object({
+  code: z
+    .string()
+    .optional()
+    .describe(
+      "The Compact contract source code to analyze (provide this OR filePath)"
+    ),
+  filePath: z
+    .string()
+    .optional()
+    .describe(
+      "Path to a .compact file to analyze (alternative to providing code directly)"
+    ),
+});
+
 // Inferred types from schemas
 export type GetFileInput = z.infer<typeof GetFileInputSchema>;
 export type ListExamplesInput = z.infer<typeof ListExamplesInputSchema>;
@@ -119,3 +154,7 @@ export type CompareSyntaxInput = z.infer<typeof CompareSyntaxInputSchema>;
 export type GetLatestSyntaxInput = z.infer<typeof GetLatestSyntaxInputSchema>;
 export type UpgradeCheckInput = z.infer<typeof UpgradeCheckInputSchema>;
 export type FullRepoContextInput = z.infer<typeof FullRepoContextInputSchema>;
+export type ValidateContractInput = z.infer<typeof ValidateContractInputSchema>;
+export type ExtractContractStructureInput = z.infer<
+  typeof ExtractContractStructureInputSchema
+>;
