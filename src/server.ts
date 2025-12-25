@@ -10,9 +10,15 @@ import {
   ListResourceTemplatesRequestSchema,
   SubscribeRequestSchema,
   UnsubscribeRequestSchema,
+  SetLevelRequestSchema,
+  LoggingLevel,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import { logger, formatErrorResponse } from "./utils/index.js";
+import {
+  logger,
+  formatErrorResponse,
+  setMCPLogCallback,
+} from "./utils/index.js";
 import { vectorStore } from "./db/index.js";
 import { allTools } from "./tools/index.js";
 import {
@@ -30,7 +36,7 @@ import type {
 } from "./types/index.js";
 
 // Server information - version should match package.json
-const CURRENT_VERSION = "0.1.29";
+const CURRENT_VERSION = "0.1.30";
 const SERVER_INFO = {
   name: "midnight-mcp",
   version: CURRENT_VERSION,
@@ -142,6 +148,52 @@ const resourceTemplates: ResourceTemplate[] = [
 /**
  * Create and configure the MCP server
  */
+// Current MCP logging level (controlled by client)
+let mcpLogLevel: LoggingLevel = "info";
+
+// Server instance for sending notifications
+let serverInstance: Server | null = null;
+
+/**
+ * Send a log message to the MCP client
+ * This allows clients to see server logs for debugging
+ */
+export function sendLogToClient(
+  level: LoggingLevel,
+  loggerName: string,
+  data: unknown
+): void {
+  if (!serverInstance) return;
+
+  // Map levels to numeric values for comparison
+  const levelValues: Record<LoggingLevel, number> = {
+    debug: 0,
+    info: 1,
+    notice: 2,
+    warning: 3,
+    error: 4,
+    critical: 5,
+    alert: 6,
+    emergency: 7,
+  };
+
+  // Only send if level meets threshold
+  if (levelValues[level] < levelValues[mcpLogLevel]) return;
+
+  try {
+    serverInstance.notification({
+      method: "notifications/message",
+      params: {
+        level,
+        logger: loggerName,
+        data,
+      },
+    });
+  } catch {
+    // Ignore notification errors
+  }
+}
+
 export function createServer(): Server {
   const server = new Server(SERVER_INFO, {
     capabilities: {
@@ -155,7 +207,16 @@ export function createServer(): Server {
       prompts: {
         listChanged: true,
       },
+      logging: {},
     },
+  });
+
+  // Store server instance for logging notifications
+  serverInstance = server;
+
+  // Wire up MCP logging - send logger output to client
+  setMCPLogCallback((level, loggerName, data) => {
+    sendLogToClient(level as LoggingLevel, loggerName, data);
   });
 
   // Register tool handlers
@@ -170,10 +231,28 @@ export function createServer(): Server {
   // Register subscription handlers
   registerSubscriptionHandlers(server);
 
+  // Register logging handler
+  registerLoggingHandler(server);
+
   // Setup sampling callback if available
   setupSampling(server);
 
   return server;
+}
+
+/**
+ * Register logging handler for MCP logging capability
+ */
+function registerLoggingHandler(server: Server): void {
+  server.setRequestHandler(SetLevelRequestSchema, async (request) => {
+    const { level } = request.params;
+    mcpLogLevel = level;
+    logger.info(`MCP log level set to: ${level}`);
+    sendLogToClient("info", "midnight-mcp", {
+      message: `Log level changed to ${level}`,
+    });
+    return {};
+  });
 }
 
 /**

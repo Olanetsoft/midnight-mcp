@@ -1,7 +1,7 @@
 export { config, isHostedMode, isLocalMode } from "./config.js";
 export type { Config, RepositoryConfig } from "./config.js";
 export { DEFAULT_REPOSITORIES } from "./config.js";
-export { logger } from "./logger.js";
+export { logger, setMCPLogCallback } from "./logger.js";
 export {
   MCPError,
   ErrorCodes,

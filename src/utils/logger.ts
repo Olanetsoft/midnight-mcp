@@ -3,6 +3,23 @@ import { config } from "./config.js";
 type LogLevel = "debug" | "info" | "warn" | "error";
 type LogFormat = "text" | "json";
 
+// MCP logging callback type
+type MCPLogCallback = (
+  level: "debug" | "info" | "notice" | "warning" | "error",
+  logger: string,
+  data: unknown
+) => void;
+
+// Global MCP log callback (set by server)
+let mcpLogCallback: MCPLogCallback | null = null;
+
+/**
+ * Set the MCP log callback to send logs to the client
+ */
+export function setMCPLogCallback(callback: MCPLogCallback | null): void {
+  mcpLogCallback = callback;
+}
+
 const LOG_LEVELS: Record<LogLevel, number> = {
   debug: 0,
   info: 1,
@@ -95,24 +112,32 @@ class Logger {
     if (this.shouldLog("debug")) {
       console.error(this.formatMessage("debug", message, meta));
     }
+    // Also send to MCP client
+    mcpLogCallback?.("debug", this.service, { message, ...meta });
   }
 
   info(message: string, meta?: object): void {
     if (this.shouldLog("info")) {
       console.error(this.formatMessage("info", message, meta));
     }
+    // Also send to MCP client
+    mcpLogCallback?.("info", this.service, { message, ...meta });
   }
 
   warn(message: string, meta?: object): void {
     if (this.shouldLog("warn")) {
       console.error(this.formatMessage("warn", message, meta));
     }
+    // Also send to MCP client (MCP uses "warning" not "warn")
+    mcpLogCallback?.("warning", this.service, { message, ...meta });
   }
 
   error(message: string, meta?: object): void {
     if (this.shouldLog("error")) {
       console.error(this.formatMessage("error", message, meta));
     }
+    // Also send to MCP client
+    mcpLogCallback?.("error", this.service, { message, ...meta });
   }
 
   /**
