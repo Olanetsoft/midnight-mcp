@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.26] - 2025-12-25
+
+### Added
+
+- **Prominent Update Prompts**: When outdated, ALL tool responses now include actionable update instructions for the AI agent
+- Agent is explicitly instructed to help users update immediately
+- Lists missing features so agent understands importance of updating
+
+## [0.1.25] - 2025-12-25
+
+### Added
+
+- **Auto-Update Detection**: Server checks npm registry at startup (non-blocking, 5s timeout)
+- Update warnings included in key tool responses when outdated
+- Logs warning when outdated version detected
+
+## [0.1.24] - 2025-12-25
+
+### Added
+
+- **`midnight-check-version` tool**: Check if you're running the latest version with detailed update instructions
+- README updated to recommend `@latest` tag for auto-updates
+- Clear instructions for clearing npx cache
+
+## [0.1.23] - 2025-12-24
+
+### Changed
+
+- **Explicit Tool Descriptions**: Updated all validation tool descriptions to be extremely clear about their purpose
+- `midnight-validate-contract`: Now marked as "🔴 REQUIRED - ALWAYS CALL FIRST"
+- `midnight-analyze-contract`: Now marked as "⚠️ STATIC ANALYSIS ONLY - NOT A COMPILER"
+- `midnight-extract-contract-structure`: Now explicitly warns against using for verification
+
+## [0.1.22] - 2025-12-24
+
+### Added
+
+- **Constructor Parameter Disclosure Detection** (`undisclosed_constructor_param`): Detects constructor params assigned to ledger without `disclose()`
+- Total pre-compilation checks: 10 issue types
+
+## [0.1.21] - 2025-12-24
+
+### Added
+
+- **4 New Pre-compilation Checks**:
+  - `unsupported_division`: Detects `/` operator (not supported in Compact)
+  - `invalid_counter_access`: Detects `.value` access on Counter type
+  - `potential_overflow`: Detects Uint multiplication that may overflow
+  - `undisclosed_witness_conditional`: Detects witness values in conditionals without `disclose()`
+
+## [0.1.20] - 2025-12-24
+
+### Changed
+
+- Improved tool descriptions to guide AI to use `validate_contract` first
+- `validate_contract` marked as PRIMARY verification tool
+- `extract_contract_structure` clarified as static analysis only
+
+## [0.1.19] - 2025-12-24
+
+### Added
+
+- **Pre-compilation Issue Detection** in `extract_contract_structure`:
+  - `module_level_const`: Detects const declarations outside circuit blocks
+  - `stdlib_name_collision`: Detects redefinition of stdlib functions
+  - `sealed_export_conflict`: Detects exported circuits modifying sealed fields
+  - `missing_constructor`: Warns when sealed fields exist without constructor
+  - `stdlib_type_mismatch`: Detects incorrect usage of stdlib return types
+
+## [0.1.18] - 2025-12-24
+
+### Added
+
+- **`midnight-validate-contract` tool**: Compile contracts using the REAL Compact compiler
+  - Returns detailed errors with line numbers
+  - Provides installation instructions if compiler not found
+  - Suggests fixes based on common error patterns
+- **`midnight-extract-contract-structure` tool**: Static analysis fallback
+  - Extracts circuits, witnesses, ledger items, types, structs, enums
+  - Detects potential issues without requiring compiler
+
 ## [0.2.0] - 2025-12-23
 
 ### Added

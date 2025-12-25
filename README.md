@@ -21,6 +21,8 @@ MCP server that gives AI assistants access to Midnight blockchain—search contr
 ```
 
 > **💡 Tip:** Using `@latest` ensures you always get the newest version with all features. If tools seem missing, run `rm -rf ~/.npm/_npx` and restart Claude Desktop.
+>
+> **🔄 Auto-Update Detection:** The server automatically checks for updates and prompts the AI to help you update if you're running an older version.
 
 **Cursor** — One-click install:
 
@@ -34,17 +36,17 @@ MCP server that gives AI assistants access to Midnight blockchain—search contr
 ```json
 {
   "mcpServers": {
-    "midnight": { "command": "npx", "args": ["-y", "midnight-mcp"] }
+    "midnight": { "command": "npx", "args": ["-y", "midnight-mcp@latest"] }
   }
 }
 ```
 
-**VS Code Copilot** — Add to `.vscode/mcp.json` or use Command Palette: `MCP: Add Server` → "command (stdio)" → `npx -y midnight-mcp`
+**VS Code Copilot** — Add to `.vscode/mcp.json` or use Command Palette: `MCP: Add Server` → "command (stdio)" → `npx -y midnight-mcp@latest`
 
 ```json
 {
   "mcpServers": {
-    "midnight": { "command": "npx", "args": ["-y", "midnight-mcp"] }
+    "midnight": { "command": "npx", "args": ["-y", "midnight-mcp@latest"] }
   }
 }
 ```
@@ -54,7 +56,7 @@ MCP server that gives AI assistants access to Midnight blockchain—search contr
 ```json
 {
   "mcpServers": {
-    "midnight": { "command": "npx", "args": ["-y", "midnight-mcp"] }
+    "midnight": { "command": "npx", "args": ["-y", "midnight-mcp@latest"] }
   }
 }
 ```
@@ -75,7 +77,7 @@ Restart your editor after adding the config. **No API keys required.**
 
 ## Features
 
-**24 Tools** — Search, analyze, validate, version tracking, AI generation, compound operations
+**26 Tools** — Search, analyze, validate, version tracking, AI generation, compound operations
 
 | Category       | Tools                                                                                                                                                                                   |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -109,7 +111,7 @@ Run everything locally for privacy or offline use:
   "mcpServers": {
     "midnight": {
       "command": "npx",
-      "args": ["-y", "midnight-mcp"],
+      "args": ["-y", "midnight-mcp@latest"],
       "env": {
         "MIDNIGHT_LOCAL": "true",
         "OPENAI_API_KEY": "sk-...",
