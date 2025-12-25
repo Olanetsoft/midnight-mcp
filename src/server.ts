@@ -30,7 +30,7 @@ import type {
 } from "./types/index.js";
 
 // Server information - version should match package.json
-const CURRENT_VERSION = "0.1.27";
+const CURRENT_VERSION = "0.1.29";
 const SERVER_INFO = {
   name: "midnight-mcp",
   version: CURRENT_VERSION,
@@ -238,9 +238,9 @@ function registerToolHandlers(server: Server): void {
           "🚨 ACTION REQUIRED": {
             message: `You are using an OUTDATED version of midnight-mcp (v${CURRENT_VERSION}). Latest is v${versionCheckResult.latestVersion}.`,
             missingFeatures: [
-              "midnight-validate-contract - Compile with REAL Compact compiler",
-              "midnight-extract-contract-structure - 10 pre-compilation checks",
-              "Pre-compilation error detection (disclose, sealed fields, etc.)",
+              "Latest tool improvements and bug fixes",
+              "midnight-extract-contract-structure - Static pattern analysis",
+              "Improved error detection and contract analysis",
             ],
             userInstructions: {
               step1:
@@ -251,7 +251,7 @@ function registerToolHandlers(server: Server): void {
               step4: "Or suggest updating config to use: midnight-mcp@latest",
             },
             importance:
-              "WITHOUT updating, contract validation will NOT work correctly. You cannot verify if contracts compile.",
+              "Update to get the latest features and improvements. Older versions may have bugs or missing functionality.",
           },
           result,
         };
