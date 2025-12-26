@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.35] - 2025-12-26
+
+### Added
+
+- **Built-in Functions Reference** - Clear distinction between stdlib functions vs patterns
+  - `persistentHash`, `persistentCommit`, `pad`, `disclose`, `assert` are BUILT-IN
+  - `public_key()` is NOT built-in - must use persistentHash pattern
+  - `verify_signature`, `random` are NOT built-in - must use witnesses
+
+- **Type Compatibility Matrix** - What types can be compared/operated together
+  - Field vs Uint comparisons require casting
+  - Uint<0..N> for bounded parameters
+  - Safe vs unsafe casts documented
+
+- **Ledger Type Limits in Circuits** - What operations work where
+  - Counter: `increment/decrement` ✓, `value()` ✗
+  - Map: `insert/remove` ✓, `lookup/member` ✗
+  - Set: `insert/remove` ✓, `member` ✗
+  - Includes workaround patterns using witnesses
+
+- **Common Compilation Errors** - Actual error messages with fixes
+  - "unbound identifier public_key" → use persistentHash pattern
+  - "incompatible combination of types Field and Uint" → cast or use bounded params
+  - "operation value undefined for Counter" → use witness or TypeScript SDK
+
+### Fixed
+
+- **Incorrect Counter/Map/Set documentation** - Removed claims that `.value()`, `.lookup()`, `.member()` work in circuits (they don't)
+- **Incomplete commit-reveal pattern** - Now includes complete, validated example with pragma
+
 ## [0.1.34] - 2025-12-26
 
 ### Fixed
