@@ -393,10 +393,12 @@ export const repositoryTools: ExtendedToolDefinition[] = [
     name: "midnight-extract-contract-structure",
     description:
       "Extract and analyze Compact contract structure (circuits, witnesses, ledger). " +
-      "Detects common issues: module-level const, stdlib name collisions, if-expression in assignments, Void return type, " +
-      "Counter.value access, division operator, missing disclose() calls. " +
-      "Use for understanding contract structure and catching common syntax mistakes. " +
-      "Note: This is static analysis - it catches common patterns but cannot verify semantic correctness.",
+      "CRITICAL CHECKS: deprecated 'ledger { }' block syntax, 'Void' return type (should be []), " +
+      "old pragma format, unexported enums, deprecated Cell<T> wrapper. " +
+      "Also detects: module-level const, stdlib name collisions, division operator, " +
+      "Counter.value access, missing disclose() calls, potential overflow. " +
+      "Use BEFORE generating contracts to catch syntax errors. " +
+      "Note: Static analysis only - catches common patterns but not semantic errors.",
     inputSchema: {
       type: "object" as const,
       properties: {

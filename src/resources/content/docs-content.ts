@@ -12,262 +12,388 @@
  */
 
 export const EMBEDDED_DOCS: Record<string, string> = {
-  "midnight://docs/compact-reference": `# Compact Language Quick Reference
+  "midnight://docs/compact-reference": `# Compact Language Syntax Reference (v0.16 - v0.18)
 
-A curated syntax reference for Compact - Midnight's smart contract language.
+> **CRITICAL**: This reference is derived from **actual compiling contracts** in the Midnight ecosystem.
+> Always verify syntax against this reference before generating contracts.
 
-> **Version Note**: This reference is for Compact 0.16+ (current). Some older examples may use deprecated syntax like \`Cell<T>\` wrappers - see "Common Pitfalls" section below.
+## Quick Start Template
 
-## Basic Structure
+Use this as a starting point - it compiles successfully:
 
 \`\`\`compact
-pragma language_version >= 0.14.0;
+pragma language_version >= 0.16 && <= 0.18;
 
-include "std";
+import CompactStandardLibrary;
 
-ledger {
-  // Public state (on-chain, visible to everyone)
-  counter: Counter;
-  
-  // Private state (off-chain, only owner can see)
-  @private
-  secretValue: Field;
-}
+// Ledger state (individual declarations, NOT a block)
+export ledger counter: Counter;
+export ledger owner: Bytes<32>;
 
-// Circuit - generates ZK proof
-export circuit increment(amount: Field): Void {
-  assert(amount > 0);
-  ledger.counter.increment(amount);
-}
+// Witness for private/off-chain data
+witness local_secret_key(): Bytes<32>;
 
-// Witness - off-chain computation
-witness getSecret(): Field {
-  return ledger.secretValue;
+// Circuit (returns [] not Void)
+export circuit increment(): [] {
+  counter.increment(1);
 }
 \`\`\`
 
-## Data Types
+---
+
+## 1. Pragma (Version Declaration)
+
+**CORRECT** - use bounded range without patch version:
+\`\`\`compact
+pragma language_version >= 0.16 && <= 0.18;
+\`\`\`
+
+**WRONG** - these will cause parse errors:
+\`\`\`compact
+pragma language_version >= 0.14.0;           // ❌ patch version not needed
+pragma language_version >= 0.16.0 < 0.19.0;  // ❌ wrong operator format
+\`\`\`
+
+---
+
+## 2. Imports
+
+Always import the standard library:
+\`\`\`compact
+import CompactStandardLibrary;
+\`\`\`
+
+For multi-file contracts, use \`include\`:
+\`\`\`compact
+include "types";
+include "ledger";
+include "circuits";
+\`\`\`
+
+---
+
+## 3. Ledger Declarations
+
+**CORRECT** - individual declarations with \`export ledger\`:
+\`\`\`compact
+export ledger counter: Counter;
+export ledger owner: Bytes<32>;
+export ledger balances: Map<Bytes<32>, Uint<64>>;
+
+// Private state (off-chain only)
+ledger secretValue: Field;  // no export = private
+\`\`\`
+
+**WRONG** - block syntax is deprecated:
+\`\`\`compact
+// ❌ This causes parse error: found "{" looking for an identifier
+ledger {
+  counter: Counter;
+  owner: Bytes<32>;
+}
+\`\`\`
+
+### Ledger Modifiers
+
+\`\`\`compact
+export ledger publicData: Field;           // Public, readable by anyone
+export sealed ledger immutableData: Field; // Set once in constructor, cannot change
+ledger privateData: Field;                 // Private, not exported
+\`\`\`
+
+---
+
+## 4. Data Types
 
 ### Primitive Types
-- \`Field\` - Finite field element (basic numeric type)
-- \`Boolean\` - True or false
-- \`Bytes<N>\` - Fixed-size byte array
-- \`Uint<N>\` - Unsigned integer (N = 8, 16, 32, 64, 128, 256)
+| Type | Description | Example |
+|------|-------------|---------|
+| \`Field\` | Finite field element (basic numeric) | \`amount: Field\` |
+| \`Boolean\` | True or false | \`isActive: Boolean\` |
+| \`Bytes<N>\` | Fixed-size byte array | \`hash: Bytes<32>\` |
+| \`Uint<N>\` | Unsigned integer (N = 8, 16, 32, 64, 128, 256) | \`balance: Uint<64>\` |
+| \`Uint<MIN..MAX>\` | Bounded unsigned integer | \`score: Uint<0..100>\` |
 
 ### Collection Types
-- \`Counter\` - Incrementable/decrementable counter
-- \`Map<K, V>\` - Key-value mapping
-- \`Set<T>\` - Collection of unique values
-- \`Opaque<T>\` - Type-safe wrapper for arbitrary data
+| Type | Description | Example |
+|------|-------------|---------|
+| \`Counter\` | Incrementable/decrementable | \`count: Counter\` |
+| \`Map<K, V>\` | Key-value mapping | \`Map<Bytes<32>, Uint<64>>\` |
+| \`Set<T>\` | Unique value collection | \`Set<Bytes<32>>\` |
+| \`Vector<N, T>\` | Fixed-size array | \`Vector<3, Field>\` |
+| \`List<T>\` | Dynamic list | \`List<Bytes<32>>\` |
+| \`Maybe<T>\` | Optional value | \`Maybe<Bytes<32>>\` |
+| \`Either<L, R>\` | Union type | \`Either<Field, Bytes<32>>\` |
+| \`Opaque<"type">\` | External type from TypeScript | \`Opaque<"string">\` |
 
-## Circuits
+### Custom Types
 
-Circuits are functions that generate zero-knowledge proofs:
-
+**Enums** - must use \`export\` to access from TypeScript:
 \`\`\`compact
-export circuit transfer(to: Address, amount: Field): Void {
-  // Assertions create ZK constraints
-  assert(amount > 0);
-  assert(ledger.balance.value() >= amount);
-  
-  // State modifications
-  ledger.balance.decrement(amount);
+export enum GameState { waiting, playing, finished }
+export enum Choice { rock, paper, scissors }
+\`\`\`
+
+**Structs**:
+\`\`\`compact
+export struct PlayerConfig {
+  name: Opaque<"string">,
+  score: Uint<32>,
+  isActive: Boolean,
 }
 \`\`\`
 
-### Key Points:
-- \`export\` makes circuit callable from outside
-- Must be deterministic (same inputs = same outputs)
-- Cannot access external data directly (use witnesses)
-- Assertions become ZK constraints
+---
 
-## Witnesses
+## 5. Circuits
 
-Witnesses provide off-chain data to circuits:
+Circuits are on-chain functions that generate ZK proofs.
+
+**CRITICAL**: Return type is \`[]\` (empty tuple), NOT \`Void\`:
 
 \`\`\`compact
-witness getCurrentPrice(): Field {
-  // This runs off-chain
-  return fetchPrice();
+// CORRECT - returns []
+export circuit increment(): [] {
+  counter.increment(1);
 }
 
-export circuit buyAtMarketPrice(maxPrice: Field): Void {
-  const price = getCurrentPrice();
-  assert(price <= maxPrice);
-  // ... execute purchase
+// CORRECT - with parameters
+export circuit transfer(to: Bytes<32>, amount: Uint<64>): [] {
+  assert(amount > 0, "Amount must be positive");
+  // ... logic
+}
+
+// CORRECT - with return value
+export circuit getBalance(addr: Bytes<32>): Uint<64> {
+  return balances.lookup(addr);
+}
+
+// WRONG - Void does not exist
+export circuit broken(): Void {  // ❌ Parse error
+  counter.increment(1);
 }
 \`\`\`
 
-### Key Points:
-- Run locally, not on-chain
-- Can access external APIs, databases
-- Cannot modify ledger state directly
-- Results are private unless disclosed
+### Circuit Modifiers
 
-## State Management
-
-### Public State
 \`\`\`compact
-ledger {
-  publicCounter: Counter;
-  publicMap: Map<Field, Field>;
+export circuit publicFn(): []      // Callable externally
+circuit internalFn(): []           // Internal only, not exported
+export pure circuit hash(x: Field): Bytes<32>  // No state access
+\`\`\`
+
+---
+
+## 6. Witnesses
+
+Witnesses provide off-chain/private data to circuits. They run locally, not on-chain.
+
+\`\`\`compact
+// Basic witness - returns private data
+witness local_secret_key(): Bytes<32>;
+
+// Witness with parameters
+witness get_merkle_path(leaf: Bytes<32>): MerkleTreePath<10, Bytes<32>>;
+
+// Witness that returns nothing (side effect only)
+witness store_locally(data: Field): [];
+
+// Witness returning optional
+witness find_user(id: Bytes<32>): Maybe<UserData>;
+\`\`\`
+
+---
+
+## 7. Constructor
+
+Optional - initializes sealed ledger fields at deploy time:
+
+\`\`\`compact
+export sealed ledger owner: Bytes<32>;
+export sealed ledger nonce: Bytes<32>;
+
+constructor(initNonce: Bytes<32>) {
+  owner = disclose(public_key(local_secret_key()));
+  nonce = disclose(initNonce);
 }
 \`\`\`
 
-### Private State
+---
+
+## 8. Common Patterns
+
+### Authentication Pattern
 \`\`\`compact
-ledger {
-  @private
-  secretBalance: Field;
-  
-  @private
-  hiddenVotes: Map<Address, Field>;
+witness local_secret_key(): Bytes<32>;
+
+circuit get_public_key(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "myapp:pk:"), sk]);
+}
+
+export circuit authenticated_action(): [] {
+  const sk = local_secret_key();
+  const caller = get_public_key(sk);
+  assert(disclose(caller == owner), "Not authorized");
+  // ... action
 }
 \`\`\`
 
-## Common Patterns
-
-### Access Control
+### Commit-Reveal Pattern
 \`\`\`compact
-ledger {
-  owner: Opaque<"address">;
+export ledger commitment: Bytes<32>;
+export ledger revealed: Boolean;
+
+witness get_stored_value(): Field;
+witness store_value(v: Field): [];
+
+export circuit commit(value: Field): [] {
+  const sk = local_secret_key();
+  store_value(value);
+  commitment = disclose(persistentHash<Vector<2, Bytes<32>>>([
+    value as Bytes<32>, 
+    sk
+  ]));
 }
 
-witness getCaller(): Opaque<"address"> {
-  return context.caller;
-}
-
-export circuit ownerOnly(): Void {
-  assert(getCaller() == ledger.owner, "Not owner");
+export circuit reveal(): Field {
+  const sk = local_secret_key();
+  const value = get_stored_value();
+  const expected = persistentHash<Vector<2, Bytes<32>>>([
+    value as Bytes<32>, 
+    sk
+  ]);
+  assert(disclose(expected == commitment), "Mismatch");
+  revealed = true;
+  return disclose(value);
 }
 \`\`\`
 
-### Disclosure
-\`\`\`compact
-export circuit revealSecret(): Field {
-  const secret = getPrivateData();
-  return disclose(secret); // Makes private data public
-}
-\`\`\`
-
-### Disclosure in Conditionals (IMPORTANT)
-When using witness values in if/else conditions, you MUST explicitly disclose the comparison result:
+### Disclosure in Conditionals
+When branching on witness values, wrap comparisons in \`disclose()\`:
 
 \`\`\`compact
-// ❌ WRONG - compiler error: "potential witness-value disclosure must be declared"
-witness getSecret(): Field { return 42; }
-export circuit checkValue(guess: Field): Boolean {
-  const secret = getSecret();
-  if (guess == secret) {  // ERROR: implicit disclosure
-    return true;
-  }
-  return false;
-}
-
-// ✅ CORRECT - wrap comparison in disclose()
-export circuit checkValue(guess: Field): Boolean {
-  const secret = getSecret();
-  if (disclose(guess == secret)) {  // Explicitly acknowledge disclosure
-    return true;
-  }
-  return false;
-}
-
-// ✅ Multiple comparisons
-export circuit giveHint(guess: Field): Hint {
-  const secret = getSecret();
+// CORRECT
+export circuit check(guess: Field): Boolean {
+  const secret = get_secret();  // witness
   if (disclose(guess == secret)) {
-    return Hint.correct;
-  } else if (disclose(guess > secret)) {
-    return Hint.too_high;
-  } else {
-    return Hint.too_low;
+    return true;
   }
+  return false;
+}
+
+// WRONG - will not compile
+export circuit check_broken(guess: Field): Boolean {
+  const secret = get_secret();
+  if (guess == secret) {  // ❌ implicit disclosure error
+    return true;
+  }
+  return false;
 }
 \`\`\`
 
-**Why?** When you branch on a comparison involving private (witness) values, the boolean result becomes observable on-chain. Compact requires explicit acknowledgment via \`disclose()\` to prevent accidental privacy leaks.
+---
 
-### Assertions
+## 9. Common Operations
+
+### Counter Operations
 \`\`\`compact
-assert(condition);                    // Basic assertion
-assert(condition, "Error message");   // With message
+counter.increment(1);
+counter.decrement(1);
+const val = counter.value();  // Note: returns as Field
 \`\`\`
 
-## Common Pitfalls & Solutions
-
-### 1. Cell<T> Wrapper (Deprecated)
+### Map Operations
 \`\`\`compact
-// ❌ OLD SYNTAX (pre-0.15) - causes "unbound identifier Cell"
-export ledger myValue: Cell<Field>;
-myValue.write(42);
-const x = myValue.read();
-
-// ✅ CURRENT SYNTAX (0.16+) - direct declaration
-export ledger myValue: Field;
-myValue = 42;
-const x = myValue;
-\`\`\`
-
-### 2. Opaque String Assignment
-\`\`\`compact
-// ❌ WRONG - cannot assign string literals to Opaque
-export ledger message: Opaque<"string">;
-export circuit setMessage(): Void {
-  message = "hello";  // ERROR!
-}
-
-// ✅ CORRECT - use enum for fixed values
-export enum Status { pending, approved, rejected }
-export ledger status: Status;
-export circuit setStatus(): Void {
-  status = Status.approved;  // Works!
-}
-
-// ✅ Or receive Opaque from parameter/witness
-export circuit setMessage(msg: Opaque<"string">): Void {
-  message = msg;  // msg comes from TypeScript
-}
-\`\`\`
-
-### 3. Counter vs Field
-\`\`\`compact
-// Counter has special methods
-export ledger count: Counter;
-count.increment(1);
-count.decrement(1);
-const val = count.value();
-
-// Field uses direct assignment
-export ledger amount: Field;
-amount = amount + 1;
-const val = amount;
-\`\`\`
-
-### 4. Map Initialization
-\`\`\`compact
-// Maps don't need initialization
-export ledger balances: Map<Bytes<32>, Field>;
-
-// Access with .member()
-const balance = balances.member(address);
 balances.insert(address, 100);
+const balance = balances.lookup(address);
+const exists = balances.member(address);
 \`\`\`
 
-### 5. Boolean Returns with Witnesses
+### Set Operations
 \`\`\`compact
-// ❌ WRONG - returns private boolean without disclosure
-export circuit isOwner(): Boolean {
-  const caller = getCaller();  // witness
-  return caller == owner;      // ERROR: undisclosed
-}
+members.insert(address);
+const isMember = members.member(address);
+\`\`\`
 
-// ✅ CORRECT - disclose the result
-export circuit isOwner(): Boolean {
-  const caller = getCaller();
-  return disclose(caller == owner);
+### Maybe Operations
+\`\`\`compact
+const opt: Maybe<Field> = some<Field>(42);
+const empty: Maybe<Field> = none<Field>();
+
+if (opt.is_some) {
+  const val = opt.value;
 }
 \`\`\`
+
+### Type Casting
+\`\`\`compact
+const f: Field = counter.value();           // Counter to Field
+const bytes: Bytes<32> = f as Bytes<32>;    // Field to Bytes
+const num: Uint<64> = f as Uint<64>;        // Field to Uint
+\`\`\`
+
+### Hashing
+\`\`\`compact
+// Persistent hash (same input = same output across calls)
+const hash = persistentHash<Vector<2, Bytes<32>>>([data1, data2]);
+
+// Transient hash (includes randomness)  
+const commit = transientCommit<Field>(value, randomness);
+\`\`\`
+
+---
+
+## 10. Assertions
+
+\`\`\`compact
+assert(condition, "Error message");
+assert(amount > 0, "Amount must be positive");
+assert(disclose(caller == owner), "Not authorized");
+\`\`\`
+
+---
+
+## 11. Common Mistakes to Avoid
+
+| Mistake | Correct |
+|---------|---------|
+| \`ledger { field: Type; }\` | \`export ledger field: Type;\` |
+| \`circuit fn(): Void\` | \`circuit fn(): []\` |
+| \`pragma >= 0.16.0\` | \`pragma >= 0.16 && <= 0.18\` |
+| \`enum State { ... }\` | \`export enum State { ... }\` |
+| \`if (witness_val == x)\` | \`if (disclose(witness_val == x))\` |
+| \`Cell<Field>\` | \`Field\` (Cell is deprecated) |
+| \`myValue.read()\` / \`.write()\` | Direct assignment: \`myValue = x\` |
+
+---
+
+## 12. Exports for TypeScript
+
+To use types/values in TypeScript, they must be exported:
+
+\`\`\`compact
+// These are accessible from TypeScript
+export enum GameState { waiting, playing }
+export struct Config { value: Field }
+export ledger counter: Counter;
+export circuit play(): []
+
+// Standard library re-exports (if needed in TS)
+export { Maybe, Either, CoinInfo };
+\`\`\`
+
+---
+
+## Reference Contracts
+
+These contracts compile successfully and demonstrate correct patterns:
+
+1. **Counter** (beginner): \`midnightntwrk/example-counter\`
+2. **Bulletin Board** (intermediate): \`midnightntwrk/example-bboard\`  
+3. **Naval Battle Game** (advanced): \`ErickRomeroDev/naval-battle-game_v2\`
+4. **Sea Battle** (advanced): \`bricktowers/midnight-seabattle\`
+
+When in doubt, reference these repos for working syntax.
 `,
 
   "midnight://docs/sdk-api": `# Midnight TypeScript SDK Quick Reference

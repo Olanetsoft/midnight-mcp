@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.33] - 2025-12-26
+
+### Fixed
+
+- **Complete syntax reference rewrite** - Fixed critical errors in embedded documentation
+  - Fixed `ledger { }` block syntax → now shows correct `export ledger field: Type;`
+  - Fixed `Void` return type → now shows correct `[]` (empty tuple)
+  - Fixed pragma format → now shows correct `>= 0.16 && <= 0.18`
+  - Added Quick Start Template that always compiles
+  - Added `commonMistakes` array to tool response
+  - Added `referenceContracts` pointing to known-good repos
+
+### Added
+
+- **5 new P0 static analysis checks** in `midnight-extract-contract-structure`:
+  - `deprecated_ledger_block` - catches `ledger { }` syntax
+  - `invalid_void_type` - catches `Void` return type
+  - `invalid_pragma_format` - catches old pragma with patch version
+  - `unexported_enum` - warns about enums not accessible from TypeScript
+  - `deprecated_cell_wrapper` - catches `Cell<T>` (deprecated since 0.15)
+
+### Changed
+
+- Updated `midnight-get-latest-syntax` response to include:
+  - `quickStartTemplate` - minimal compiling contract
+  - `commonMistakes` - array of wrong/correct patterns with error messages
+  - `referenceContracts` - links to known-good example repos
+- Updated embedded docs version from 0.16 to 0.18
+
 ## [0.1.32] - 2025-12-26
 
 ### Fixed

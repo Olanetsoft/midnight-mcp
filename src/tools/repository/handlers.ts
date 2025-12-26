@@ -441,7 +441,7 @@ export async function getLatestSyntax(input: GetLatestSyntaxInput) {
     const compactReference = EMBEDDED_DOCS["midnight://docs/compact-reference"];
 
     // Check if there's a newer release we might not have documented
-    const EMBEDDED_DOCS_VERSION = "0.16"; // Version our docs are based on
+    const EMBEDDED_DOCS_VERSION = "0.18"; // Version our docs are based on
     let versionWarning: string | undefined;
 
     try {
@@ -476,27 +476,84 @@ export async function getLatestSyntax(input: GetLatestSyntaxInput) {
     if (compactReference) {
       return {
         repository: "midnightntwrk/compact",
-        version: "0.16+ (current)",
+        version: "0.16-0.18 (current)",
         ...(versionWarning && { versionWarning }),
+        
+        // Quick start template - ALWAYS compiles
+        quickStartTemplate: `pragma language_version >= 0.16 && <= 0.18;
+
+import CompactStandardLibrary;
+
+export ledger counter: Counter;
+export ledger owner: Bytes<32>;
+
+witness local_secret_key(): Bytes<32>;
+
+export circuit increment(): [] {
+  counter.increment(1);
+}`,
+        
+        // Common mistakes that cause compilation failures
+        commonMistakes: [
+          {
+            wrong: 'ledger { field: Type; }',
+            correct: 'export ledger field: Type;',
+            error: 'parse error: found "{" looking for an identifier',
+          },
+          {
+            wrong: 'circuit fn(): Void',
+            correct: 'circuit fn(): []',
+            error: 'parse error: found "{" looking for ";"',
+          },
+          {
+            wrong: 'pragma language_version >= 0.14.0;',
+            correct: 'pragma language_version >= 0.16 && <= 0.18;',
+            error: 'version mismatch or parse error',
+          },
+          {
+            wrong: 'enum State { a, b }',
+            correct: 'export enum State { a, b }',
+            error: 'enum not accessible from TypeScript',
+          },
+          {
+            wrong: 'if (witness_val == x)',
+            correct: 'if (disclose(witness_val == x))',
+            error: 'implicit disclosure error',
+          },
+          {
+            wrong: 'Cell<Field>',
+            correct: 'Field',
+            error: 'unbound identifier Cell (deprecated)',
+          },
+        ],
+        
         syntaxReference: compactReference,
+        
         sections: [
-          "Basic Structure",
+          "Quick Start Template",
+          "Pragma (Version Declaration)",
+          "Imports",
+          "Ledger Declarations",
           "Data Types",
           "Circuits",
           "Witnesses",
-          "State Management",
+          "Constructor",
           "Common Patterns",
-          "Disclosure in Conditionals (IMPORTANT)",
-          "Common Pitfalls & Solutions",
+          "Common Operations",
+          "Assertions",
+          "Common Mistakes to Avoid",
+          "Exports for TypeScript",
+          "Reference Contracts",
         ],
-        pitfalls: [
-          "Cell<T> wrapper deprecated in 0.15+ - use direct type",
-          'Cannot assign string literals to Opaque<"string"> - use enum or parameters',
-          "Must disclose() comparisons used in if/else conditions",
-          "Counter uses .increment()/.value(), Field uses direct assignment",
-          "Boolean returns from witnesses need disclose()",
+        
+        referenceContracts: [
+          { name: "Counter", repo: "midnightntwrk/example-counter", level: "beginner" },
+          { name: "Bulletin Board", repo: "midnightntwrk/example-bboard", level: "intermediate" },
+          { name: "Naval Battle", repo: "ErickRomeroDev/naval-battle-game_v2", level: "advanced" },
+          { name: "Sea Battle", repo: "bricktowers/midnight-seabattle", level: "advanced" },
         ],
-        note: "This is the curated syntax reference for Compact 0.16+. Includes common pitfalls and correct patterns.",
+        
+        note: "CRITICAL: Use quickStartTemplate as your base. Check commonMistakes before submitting code. This reference is derived from actual compiling contracts.",
       };
     }
   }

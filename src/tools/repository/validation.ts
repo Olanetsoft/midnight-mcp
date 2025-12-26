@@ -546,6 +546,87 @@ export async function extractContractStructure(
     "Vector",
   ];
 
+  // ========== CRITICAL SYNTAX CHECKS (P0 - causes immediate compilation failure) ==========
+
+  // P0-1. Detect deprecated ledger block syntax
+  const ledgerBlockPattern = /ledger\s*\{/g;
+  let ledgerBlockMatch;
+  while ((ledgerBlockMatch = ledgerBlockPattern.exec(code)) !== null) {
+    const lineNum = lineByIndex[ledgerBlockMatch.index] || 1;
+    potentialIssues.push({
+      type: "deprecated_ledger_block",
+      line: lineNum,
+      message: `Deprecated ledger block syntax 'ledger { }' - causes parse error`,
+      suggestion: `Use individual declarations: 'export ledger fieldName: Type;'`,
+      severity: "error",
+    });
+  }
+
+  // P0-2. Detect Void return type (doesn't exist in Compact)
+  const voidReturnPattern = /circuit\s+\w+\s*\([^)]*\)\s*:\s*Void\b/g;
+  let voidMatch;
+  while ((voidMatch = voidReturnPattern.exec(code)) !== null) {
+    const lineNum = lineByIndex[voidMatch.index] || 1;
+    potentialIssues.push({
+      type: "invalid_void_type",
+      line: lineNum,
+      message: `Invalid return type 'Void' - Void does not exist in Compact`,
+      suggestion: `Use '[]' (empty tuple) for circuits that return nothing: 'circuit fn(): []'`,
+      severity: "error",
+    });
+  }
+
+  // P0-3. Detect old pragma format with patch version
+  const oldPragmaPattern = /pragma\s+language_version\s*>=?\s*\d+\.\d+\.\d+/g;
+  let oldPragmaMatch;
+  while ((oldPragmaMatch = oldPragmaPattern.exec(code)) !== null) {
+    const lineNum = lineByIndex[oldPragmaMatch.index] || 1;
+    potentialIssues.push({
+      type: "invalid_pragma_format",
+      line: lineNum,
+      message: `Pragma includes patch version which may cause parse errors`,
+      suggestion: `Use bounded range format: 'pragma language_version >= 0.16 && <= 0.18;'`,
+      severity: "error",
+    });
+  }
+
+  // P0-4. Detect missing export on enums (won't be accessible from TypeScript)
+  const unexportedEnumPattern = /(?<!export\s+)enum\s+(\w+)\s*\{/g;
+  let unexportedEnumMatch;
+  while ((unexportedEnumMatch = unexportedEnumPattern.exec(code)) !== null) {
+    // Double check it's not preceded by export
+    const before = code.substring(
+      Math.max(0, unexportedEnumMatch.index - 10),
+      unexportedEnumMatch.index
+    );
+    if (!before.includes("export")) {
+      const lineNum = lineByIndex[unexportedEnumMatch.index] || 1;
+      potentialIssues.push({
+        type: "unexported_enum",
+        line: lineNum,
+        message: `Enum '${unexportedEnumMatch[1]}' is not exported - won't be accessible from TypeScript`,
+        suggestion: `Add 'export' keyword: 'export enum ${unexportedEnumMatch[1]} { ... }'`,
+        severity: "warning",
+      });
+    }
+  }
+
+  // P0-5. Detect Cell<T> wrapper (deprecated since 0.15)
+  const cellPattern = /Cell\s*<\s*\w+\s*>/g;
+  let cellMatch;
+  while ((cellMatch = cellPattern.exec(code)) !== null) {
+    const lineNum = lineByIndex[cellMatch.index] || 1;
+    potentialIssues.push({
+      type: "deprecated_cell_wrapper",
+      line: lineNum,
+      message: `'Cell<T>' wrapper is deprecated since Compact 0.15`,
+      suggestion: `Use the type directly: 'Field' instead of 'Cell<Field>'`,
+      severity: "error",
+    });
+  }
+
+  // ========== EXISTING CHECKS ==========
+
   // 1. Detect module-level const (not supported in Compact)
   const constPattern = /^const\s+(\w+)\s*:/gm;
   let constMatch;
@@ -859,19 +940,7 @@ export async function extractContractStructure(
     });
   }
 
-  // 12. Detect "Void" return type (should use [] empty tuple)
-  const voidReturnPattern = /circuit\s+\w+\s*\([^)]*\)\s*:\s*Void\b/g;
-  let voidMatch;
-  while ((voidMatch = voidReturnPattern.exec(code)) !== null) {
-    const lineNum = lineByIndex[voidMatch.index] || 1;
-    potentialIssues.push({
-      type: "invalid_void_type",
-      line: lineNum,
-      message: `'Void' is not a valid type in Compact`,
-      suggestion: `Use empty tuple '[]' for circuits with no return value: 'circuit name(): []'`,
-      severity: "error",
-    });
-  }
+  // 12. (Moved to P0-2 above - Void return type check)
 
   const summary = [];
   if (circuits.length > 0) {
