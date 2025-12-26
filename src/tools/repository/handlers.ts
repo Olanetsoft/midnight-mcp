@@ -13,6 +13,11 @@ import {
 import { sendProgressNotification } from "../../server.js";
 import { REPO_ALIASES, EXAMPLES } from "./constants.js";
 import { EMBEDDED_DOCS } from "../../resources/content/docs-content.js";
+import {
+  COMPACT_VERSION,
+  RECOMMENDED_PRAGMA,
+  REFERENCE_CONTRACTS,
+} from "../../config/compact-version.js";
 import type {
   GetFileInput,
   ListExamplesInput,
@@ -441,7 +446,7 @@ export async function getLatestSyntax(input: GetLatestSyntaxInput) {
     const compactReference = EMBEDDED_DOCS["midnight://docs/compact-reference"];
 
     // Check if there's a newer release we might not have documented
-    const EMBEDDED_DOCS_VERSION = "0.18"; // Version our docs are based on
+    // Version config is centralized in src/config/compact-version.ts
     let versionWarning: string | undefined;
 
     try {
@@ -458,15 +463,12 @@ export async function getLatestSyntax(input: GetLatestSyntaxInput) {
           .split(".")
           .slice(0, 2)
           .join(".");
-        const embeddedMajorMinor = EMBEDDED_DOCS_VERSION.split(".")
-          .slice(0, 2)
-          .join(".");
 
         if (
-          latestVersion !== embeddedMajorMinor &&
-          parseFloat(latestVersion) > parseFloat(embeddedMajorMinor)
+          latestVersion !== COMPACT_VERSION.max &&
+          parseFloat(latestVersion) > parseFloat(COMPACT_VERSION.max)
         ) {
-          versionWarning = `⚠️ Compact ${latestTag} is available. This reference is based on ${EMBEDDED_DOCS_VERSION}. Some syntax may have changed - check release notes for breaking changes.`;
+          versionWarning = `⚠️ Compact ${latestTag} is available. This reference is based on ${COMPACT_VERSION.max}. Some syntax may have changed - check release notes for breaking changes. See docs/SYNTAX_MAINTENANCE.md for update instructions.`;
         }
       }
     } catch {
@@ -476,11 +478,18 @@ export async function getLatestSyntax(input: GetLatestSyntaxInput) {
     if (compactReference) {
       return {
         repository: "midnightntwrk/compact",
-        version: "0.16-0.18 (current)",
+        version: `${COMPACT_VERSION.min}-${COMPACT_VERSION.max} (current)`,
+        versionConfig: {
+          min: COMPACT_VERSION.min,
+          max: COMPACT_VERSION.max,
+          lastUpdated: COMPACT_VERSION.lastUpdated,
+          maintenanceGuide:
+            "See docs/SYNTAX_MAINTENANCE.md for update instructions",
+        },
         ...(versionWarning && { versionWarning }),
-        
+
         // Quick start template - ALWAYS compiles
-        quickStartTemplate: `pragma language_version >= 0.16 && <= 0.18;
+        quickStartTemplate: `${RECOMMENDED_PRAGMA}
 
 import CompactStandardLibrary;
 
@@ -492,43 +501,43 @@ witness local_secret_key(): Bytes<32>;
 export circuit increment(): [] {
   counter.increment(1);
 }`,
-        
+
         // Common mistakes that cause compilation failures
         commonMistakes: [
           {
-            wrong: 'ledger { field: Type; }',
-            correct: 'export ledger field: Type;',
+            wrong: "ledger { field: Type; }",
+            correct: "export ledger field: Type;",
             error: 'parse error: found "{" looking for an identifier',
           },
           {
-            wrong: 'circuit fn(): Void',
-            correct: 'circuit fn(): []',
+            wrong: "circuit fn(): Void",
+            correct: "circuit fn(): []",
             error: 'parse error: found "{" looking for ";"',
           },
           {
-            wrong: 'pragma language_version >= 0.14.0;',
-            correct: 'pragma language_version >= 0.16 && <= 0.18;',
-            error: 'version mismatch or parse error',
+            wrong: "pragma language_version >= 0.14.0;",
+            correct: RECOMMENDED_PRAGMA,
+            error: "version mismatch or parse error",
           },
           {
-            wrong: 'enum State { a, b }',
-            correct: 'export enum State { a, b }',
-            error: 'enum not accessible from TypeScript',
+            wrong: "enum State { a, b }",
+            correct: "export enum State { a, b }",
+            error: "enum not accessible from TypeScript",
           },
           {
-            wrong: 'if (witness_val == x)',
-            correct: 'if (disclose(witness_val == x))',
-            error: 'implicit disclosure error',
+            wrong: "if (witness_val == x)",
+            correct: "if (disclose(witness_val == x))",
+            error: "implicit disclosure error",
           },
           {
-            wrong: 'Cell<Field>',
-            correct: 'Field',
-            error: 'unbound identifier Cell (deprecated)',
+            wrong: "Cell<Field>",
+            correct: "Field",
+            error: "unbound identifier Cell (deprecated)",
           },
         ],
-        
+
         syntaxReference: compactReference,
-        
+
         sections: [
           "Quick Start Template",
           "Pragma (Version Declaration)",
@@ -545,15 +554,14 @@ export circuit increment(): [] {
           "Exports for TypeScript",
           "Reference Contracts",
         ],
-        
-        referenceContracts: [
-          { name: "Counter", repo: "midnightntwrk/example-counter", level: "beginner" },
-          { name: "Bulletin Board", repo: "midnightntwrk/example-bboard", level: "intermediate" },
-          { name: "Naval Battle", repo: "ErickRomeroDev/naval-battle-game_v2", level: "advanced" },
-          { name: "Sea Battle", repo: "bricktowers/midnight-seabattle", level: "advanced" },
-        ],
-        
-        note: "CRITICAL: Use quickStartTemplate as your base. Check commonMistakes before submitting code. This reference is derived from actual compiling contracts.",
+
+        referenceContracts: REFERENCE_CONTRACTS.map((rc) => ({
+          name: rc.name,
+          repo: rc.repo,
+          description: rc.description,
+        })),
+
+        note: `CRITICAL: Use quickStartTemplate as your base. Check commonMistakes before submitting code. This reference is for Compact ${COMPACT_VERSION.min}-${COMPACT_VERSION.max} (last updated: ${COMPACT_VERSION.lastUpdated}).`,
       };
     }
   }
