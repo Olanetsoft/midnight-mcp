@@ -226,6 +226,7 @@ constructor(initNonce: Bytes<32>) {
 \`\`\`compact
 witness local_secret_key(): Bytes<32>;
 
+// IMPORTANT: public_key() is NOT a builtin - use this pattern
 circuit get_public_key(sk: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<2, Bytes<32>>>([pad(32, "myapp:pk:"), sk]);
 }
@@ -238,32 +239,47 @@ export circuit authenticated_action(): [] {
 }
 \`\`\`
 
-### Commit-Reveal Pattern
+### Commit-Reveal Pattern (COMPLETE, VALIDATED)
 \`\`\`compact
+pragma language_version >= 0.16 && <= 0.18;
+
+import CompactStandardLibrary;
+
+// Ledger state
 export ledger commitment: Bytes<32>;
-export ledger revealed: Boolean;
+export ledger revealed_value: Field;
+export ledger is_revealed: Boolean;
 
-witness get_stored_value(): Field;
-witness store_value(v: Field): [];
+// Witnesses for off-chain storage
+witness local_secret_key(): Bytes<32>;
+witness store_secret_value(v: Field): [];
+witness get_secret_value(): Field;
 
-export circuit commit(value: Field): [] {
-  const sk = local_secret_key();
-  store_value(value);
-  commitment = disclose(persistentHash<Vector<2, Bytes<32>>>([
-    value as Bytes<32>, 
-    sk
-  ]));
+// Helper: compute commitment hash
+circuit compute_commitment(value: Field, salt: Bytes<32>): Bytes<32> {
+  // Convert Field to Bytes for hashing
+  const value_bytes = value as Bytes<32>;
+  return persistentHash<Vector<2, Bytes<32>>>([value_bytes, salt]);
 }
 
+// Commit phase: store hash on-chain, value off-chain
+export circuit commit(value: Field): [] {
+  const salt = local_secret_key();
+  store_secret_value(value);
+  commitment = disclose(compute_commitment(value, salt));
+  is_revealed = false;
+}
+
+// Reveal phase: verify stored value matches commitment
 export circuit reveal(): Field {
-  const sk = local_secret_key();
-  const value = get_stored_value();
-  const expected = persistentHash<Vector<2, Bytes<32>>>([
-    value as Bytes<32>, 
-    sk
-  ]);
-  assert(disclose(expected == commitment), "Mismatch");
-  revealed = true;
+  const salt = local_secret_key();
+  const value = get_secret_value();
+  const expected = compute_commitment(value, salt);
+  assert(disclose(expected == commitment), "Value doesn't match commitment");
+  assert(disclose(!is_revealed), "Already revealed");
+  
+  revealed_value = disclose(value);
+  is_revealed = true;
   return disclose(value);
 }
 \`\`\`
@@ -297,22 +313,39 @@ export circuit check_broken(guess: Field): Boolean {
 
 ### Counter Operations
 \`\`\`compact
+// These work in circuits:
 counter.increment(1);
 counter.decrement(1);
-const val = counter.value();  // Note: returns as Field
+counter.resetToDefault();
+
+// ⚠️ DOES NOT WORK IN CIRCUITS:
+// const val = counter.value();  // ERROR: operation undefined
+// Instead, read counter value in TypeScript SDK: ledgerState.counter
 \`\`\`
 
 ### Map Operations
 \`\`\`compact
+// These work in circuits:
 balances.insert(address, 100);
-const balance = balances.lookup(address);
-const exists = balances.member(address);
+balances.remove(address);
+
+// ⚠️ DOES NOT WORK IN CIRCUITS:
+// const balance = balances.lookup(address);  // ERROR
+// const exists = balances.member(address);   // ERROR
+// Instead, use witnesses to read values:
+witness get_balance(addr: Bytes<32>): Uint<64>;
 \`\`\`
 
 ### Set Operations
 \`\`\`compact
+// These work in circuits:
 members.insert(address);
-const isMember = members.member(address);
+members.remove(address);
+
+// ⚠️ DOES NOT WORK IN CIRCUITS:
+// const isMember = members.member(address);  // ERROR
+// Use witness instead:
+witness is_member(addr: Bytes<32>): Boolean;
 \`\`\`
 
 ### Maybe Operations
@@ -327,9 +360,9 @@ if (opt.is_some) {
 
 ### Type Casting
 \`\`\`compact
-const f: Field = counter.value();           // Counter to Field
-const bytes: Bytes<32> = f as Bytes<32>;    // Field to Bytes
-const num: Uint<64> = f as Uint<64>;        // Field to Uint
+const bytes: Bytes<32> = myField as Bytes<32>;  // Field to Bytes
+const num: Uint<64> = myField as Uint<64>;      // Field to Uint (bounds not checked!)
+const field: Field = myUint as Field;           // Uint to Field (safe)
 \`\`\`
 
 ### Hashing
@@ -337,8 +370,8 @@ const num: Uint<64> = f as Uint<64>;        // Field to Uint
 // Persistent hash (same input = same output across calls)
 const hash = persistentHash<Vector<2, Bytes<32>>>([data1, data2]);
 
-// Transient hash (includes randomness)  
-const commit = transientCommit<Field>(value, randomness);
+// Persistent commit (hiding commitment)
+const commit = persistentCommit<Field>(value);
 \`\`\`
 
 ---

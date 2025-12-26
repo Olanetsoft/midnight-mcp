@@ -17,6 +17,10 @@ import {
   COMPACT_VERSION,
   RECOMMENDED_PRAGMA,
   REFERENCE_CONTRACTS,
+  BUILTIN_FUNCTIONS,
+  TYPE_COMPATIBILITY,
+  LEDGER_TYPE_LIMITS,
+  COMMON_ERRORS,
 } from "../../config/compact-version.js";
 import type {
   GetFileInput,
@@ -502,6 +506,18 @@ export circuit increment(): [] {
   counter.increment(1);
 }`,
 
+        // Built-in functions vs patterns (CRITICAL knowledge)
+        builtinFunctions: BUILTIN_FUNCTIONS,
+
+        // Type compatibility rules
+        typeCompatibility: TYPE_COMPATIBILITY,
+
+        // Ledger type limitations in circuits
+        ledgerTypeLimits: LEDGER_TYPE_LIMITS,
+
+        // Common compilation errors with fixes
+        commonErrors: COMMON_ERRORS,
+
         // Common mistakes that cause compilation failures
         commonMistakes: [
           {
@@ -534,6 +550,22 @@ export circuit increment(): [] {
             correct: "Field",
             error: "unbound identifier Cell (deprecated)",
           },
+          {
+            wrong: "public_key(sk)",
+            correct:
+              'persistentHash<Vector<2, Bytes<32>>>([pad(32, "midnight:pk:"), sk])',
+            error: 'unbound identifier "public_key"',
+          },
+          {
+            wrong: "counter.value()",
+            correct: "// Read via witness or TypeScript SDK",
+            error: 'operation "value" undefined for Counter',
+          },
+          {
+            wrong: "data.lookup(key)",
+            correct: "// Use witness: witness get_value(key): Type;",
+            error: "member access requires struct type",
+          },
         ],
 
         syntaxReference: compactReference,
@@ -544,6 +576,9 @@ export circuit increment(): [] {
           "Imports",
           "Ledger Declarations",
           "Data Types",
+          "Built-in Functions",
+          "Type Compatibility",
+          "Ledger Type Limits",
           "Circuits",
           "Witnesses",
           "Constructor",
@@ -551,6 +586,7 @@ export circuit increment(): [] {
           "Common Operations",
           "Assertions",
           "Common Mistakes to Avoid",
+          "Common Errors & Fixes",
           "Exports for TypeScript",
           "Reference Contracts",
         ],
@@ -561,7 +597,13 @@ export circuit increment(): [] {
           description: rc.description,
         })),
 
-        note: `CRITICAL: Use quickStartTemplate as your base. Check commonMistakes before submitting code. This reference is for Compact ${COMPACT_VERSION.min}-${COMPACT_VERSION.max} (last updated: ${COMPACT_VERSION.lastUpdated}).`,
+        note: `CRITICAL: Use quickStartTemplate as your base. Check commonMistakes and commonErrors before submitting code. 
+KEY GOTCHAS:
+1. public_key() is NOT a builtin - use persistentHash pattern
+2. Counter.value() NOT available in circuits - use witnesses
+3. Map.lookup()/Set.member() NOT available in circuits - use witnesses
+4. Field vs Uint comparison requires casting
+This reference is for Compact ${COMPACT_VERSION.min}-${COMPACT_VERSION.max} (last updated: ${COMPACT_VERSION.lastUpdated}).`,
       };
     }
   }
