@@ -26,6 +26,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `unexported_enum` - warns about enums not accessible from TypeScript
   - `deprecated_cell_wrapper` - catches `Cell<T>` (deprecated since 0.15)
 
+- **Smarter agent workflow** - Prompts now enforce syntax checking before/after generation
+  - `create-contract` prompt: Must call `midnight-get-latest-syntax` BEFORE generating
+  - `review-contract` prompt: Must call `midnight-extract-contract-structure` FIRST to validate
+  - `debug-contract` prompt: Must run static analysis to catch P0 errors first
+  - All prompts instruct agents to fix P0 errors before returning code to user
+
+- **CI syntax drift detection tests** - New test suite to catch future doc drift
+  - Tests that Quick Start Template passes static analysis with zero P0 errors
+  - Tests that all 5 common mistakes are detected by static analysis
+  - Tests that correct patterns don't trigger false positives
+  - Tests that documentation includes WRONG/CORRECT examples
+  - Tests full contract templates (counter, token) compile correctly
+
 ### Changed
 
 - Updated `midnight-get-latest-syntax` response to include:

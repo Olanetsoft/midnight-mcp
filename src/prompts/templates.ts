@@ -35,14 +35,16 @@ export const promptDefinitions: PromptDefinition[] = [
       },
       {
         name: "complexity",
-        description: "Expected complexity level (beginner, intermediate, advanced)",
+        description:
+          "Expected complexity level (beginner, intermediate, advanced)",
         required: false,
       },
     ],
   },
   {
     name: "midnight:review-contract",
-    description: "Security and best practices review prompt for existing contracts",
+    description:
+      "Security and best practices review prompt for existing contracts",
     arguments: [
       {
         name: "contractCode",
@@ -59,7 +61,8 @@ export const promptDefinitions: PromptDefinition[] = [
   },
   {
     name: "midnight:explain-concept",
-    description: "Educational prompt for explaining Midnight concepts at various levels",
+    description:
+      "Educational prompt for explaining Midnight concepts at various levels",
     arguments: [
       {
         name: "concept",
@@ -76,7 +79,8 @@ export const promptDefinitions: PromptDefinition[] = [
   },
   {
     name: "midnight:compare-approaches",
-    description: "Compare different implementation approaches for a given problem",
+    description:
+      "Compare different implementation approaches for a given problem",
     arguments: [
       {
         name: "problem",
@@ -157,6 +161,35 @@ function generateCreateContractPrompt(
 **Privacy Level:** ${privacyLevel}
 **Complexity:** ${complexity}
 
+## ⚠️ MANDATORY WORKFLOW - Follow these steps IN ORDER:
+
+### Step 1: Get Current Syntax
+Call \`midnight-get-latest-syntax\` FIRST to get:
+- The \`quickStartTemplate\` (use as your base)
+- The \`commonMistakes\` array (avoid these errors)
+- Current pragma format: \`pragma language_version >= 0.16 && <= 0.18;\`
+
+### Step 2: Generate Contract
+Based on syntax reference, generate the contract using:
+- Individual ledger declarations: \`export ledger field: Type;\` (NOT \`ledger { }\` blocks)
+- Empty tuple return: \`circuit fn(): []\` (NOT \`Void\`)
+- Export enums: \`export enum State { ... }\`
+- Wrap witness conditionals: \`if (disclose(witness == value))\`
+
+### Step 3: Validate Before Returning
+Call \`midnight-extract-contract-structure\` with your generated code to check for:
+- deprecated_ledger_block
+- invalid_void_type
+- invalid_pragma_format
+- unexported_enum
+- deprecated_cell_wrapper
+
+If ANY errors are found, fix them before returning the code to the user.
+
+---
+
+## Contract Requirements
+
 Please help me design and implement this contract. Consider:
 
 1. **State Design**
@@ -212,33 +245,57 @@ ${contractCode}
 
 **Focus Areas:** ${focusAreas}
 
+## ⚠️ MANDATORY WORKFLOW:
+
+### Step 1: Validate Syntax
+Call \`midnight-extract-contract-structure\` with the contract code to check for:
+- deprecated_ledger_block (should use \`export ledger field: Type;\`)
+- invalid_void_type (should use \`[]\` not \`Void\`)
+- invalid_pragma_format (should use \`>= 0.16 && <= 0.18\`)
+- unexported_enum (enums need \`export\`)
+- deprecated_cell_wrapper
+
+Report ALL static analysis findings first.
+
+### Step 2: Get Latest Syntax Reference
+If syntax errors are found, call \`midnight-get-latest-syntax\` to get:
+- The \`commonMistakes\` array showing correct patterns
+- Current syntax reference
+
+---
+
 Please analyze:
 
-1. **Security Analysis**
+1. **Static Analysis Results** (from midnight-extract-contract-structure)
+   - Syntax errors found
+   - Deprecated patterns detected
+   - Required fixes
+
+2. **Security Analysis**
    - Input validation
    - Access control
    - State manipulation vulnerabilities
    - Assertion coverage
 
-2. **Privacy Assessment**
+3. **Privacy Assessment**
    - Proper use of @private state
    - Information leakage risks
    - Correct use of disclose() and commit()
    - Privacy guarantees provided
 
-3. **Best Practices**
+4. **Best Practices**
    - Code organization
    - Naming conventions
    - Documentation
    - Error messages
 
-4. **Performance**
+5. **Performance**
    - Circuit complexity
    - State access patterns
    - Optimization opportunities
 
-5. **Recommendations**
-   - Critical issues to fix
+6. **Recommendations**
+   - Critical issues to fix (start with P0 syntax errors)
    - Improvements to consider
    - Alternative approaches
 
@@ -368,25 +425,46 @@ ${contractCode}
 
 **Error/Issue:** ${errorMessage}
 
+## ⚠️ MANDATORY WORKFLOW:
+
+### Step 1: Run Static Analysis
+Call \`midnight-extract-contract-structure\` FIRST to check for common syntax errors:
+- deprecated_ledger_block → should use \`export ledger field: Type;\`
+- invalid_void_type → should use \`[]\` not \`Void\`
+- invalid_pragma_format → should use \`>= 0.16 && <= 0.18\`
+- unexported_enum → enums need \`export\` keyword
+
+### Step 2: Get Correct Syntax
+If syntax errors found, call \`midnight-get-latest-syntax\` to get:
+- The \`commonMistakes\` array with correct patterns
+- Current \`quickStartTemplate\` for reference
+
+---
+
 Please help me debug by:
 
-1. **Identifying the Problem**
+1. **Static Analysis Results**
+   - Run midnight-extract-contract-structure
+   - List all P0 syntax errors found
+   - Show the correct syntax for each error
+
+2. **Identifying the Problem**
    - What's causing the error?
    - Which line(s) are problematic?
 
-2. **Explaining Why**
+3. **Explaining Why**
    - Root cause analysis
    - How Compact/ZK constraints work
 
-3. **Providing a Fix**
-   - Corrected code
+4. **Providing a Fix**
+   - Corrected code (validated against static analysis)
    - Explanation of changes
 
-4. **Preventing Future Issues**
+5. **Preventing Future Issues**
    - Related pitfalls to watch for
    - Testing strategies
 
-5. **Additional Improvements**
+6. **Additional Improvements**
    - Code quality suggestions
    - Best practices`,
       },
