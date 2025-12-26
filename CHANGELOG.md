@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.31] - 2025-12-26
+
+### Added
+
+- **Auto-Update Config Tool**: AI agents can now update user configs automatically
+  - New `midnight-auto-update-config` tool provides config file paths
+  - Agent can edit config to add `@latest` without user manual steps
+  - Supports Claude Desktop, Cursor, VS Code, and Windsurf configs
+  - User only needs to restart their editor after agent updates config
+
+### Changed
+
+- Update notifications now instruct AI agents to auto-update configs
+- Removed manual CLI steps from update flow
+
 ## [0.1.30] - 2025-12-25
 
 ### Added
