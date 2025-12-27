@@ -224,3 +224,6 @@ The hosted API runs on Cloudflare Workers + Vectorize. See [api/README.md](./api
 ## License
 
 MIT
+
+
+Thanks to all Stargazers ⭐️
