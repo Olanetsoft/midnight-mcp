@@ -1,6 +1,6 @@
 {
   "name": "midnight-mcp",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Model Context Protocol Server for Midnight Blockchain Development",
   "type": "module",
   "main": "dist/index.js",
