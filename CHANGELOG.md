@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.14] - 2026-01-20
+
 ### Added
 
 - **Hosted Compiler Integration** - New `midnight-compile-contract` tool for real contract validation
