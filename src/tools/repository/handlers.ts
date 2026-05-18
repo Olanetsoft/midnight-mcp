@@ -1024,6 +1024,45 @@ export circuit increment(): [] {
               "export circuit fn(param: T): [] { const d = disclose(param); ledger.insert(d, v); }",
             error: "potential witness-value disclosure must be declared",
           },
+          {
+            wrong:
+              "NativePoint, nativePointX(p), constructNativePoint(x, y)",
+            correct:
+              "JubjubPoint, jubjubPointX(p), constructJubjubPoint(x, y)",
+            error:
+              "apparent use of an old standard-library / ledger operator name NativePoint: the new name is JubjubPoint (renamed in compactc 0.30.0)",
+          },
+          {
+            wrong: "const let = 1;  // or `let` used as any identifier",
+            correct: "const value = 1;  // rename the identifier",
+            error:
+              'parse error: found keyword "let" (which is reserved for future use)',
+          },
+          {
+            wrong: "const MAX_SUPPLY: Uint<64> = 1000;  // module-level const",
+            correct:
+              "pure circuit max_supply(): Uint<64> { return 1000; }  // wrap in a pure circuit",
+            error:
+              'parse error: found keyword "const" looking for a program element',
+          },
+          {
+            wrong: "flags | mask  // bitwise OR on Uint",
+            correct:
+              "// No bitwise ops on Uint — use arithmetic or branching. `||` is logical OR for Booleans only.",
+            error: "unexpected character (single `|` not recognized)",
+          },
+          {
+            wrong: "field: Uint<254>",
+            correct: "field: Uint<248>  // max byte-aligned Uint width",
+            error:
+              "Uint width 254 is not between 1 and the maximum Uint width 248 (inclusive)",
+          },
+          {
+            wrong: "convertBytesToUint(255, n, bytes, src)  // number literal",
+            correct: "convertBytesToUint(255n, n, bytes, src)  // bigint literal",
+            error:
+              "TypeScript binding: maxval is bigint since compactc 0.30.101 (avoids silent precision loss)",
+          },
         ],
 
         syntaxReference: compactReference,

@@ -150,7 +150,7 @@ Key Compact syntax (REQUIRED):
 - \`export ledger field: Type;\` - Individual ledger declarations (NOT ledger { } blocks)
 - \`export circuit fn(): []\` - Public functions return empty tuple [] (NOT Void)
 - \`witness fn(): T;\` - Declaration only, no body
-- \`pragma language_version >= 0.16 && <= 0.21;\` - Version pragma
+- \`pragma language_version >= 0.16 && <= 0.23;\` - Version pragma
 - \`import CompactStandardLibrary;\` - Standard imports
 - \`Counter\`, \`Map<K,V>\`, \`Set<T>\` - Built-in collection types  
 - \`Field\`, \`Boolean\`, \`Uint<N>\`, \`Bytes<N>\` - Primitive types

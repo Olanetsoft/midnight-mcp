@@ -6,6 +6,7 @@
 import { readFile } from "fs/promises";
 import { basename, isAbsolute, resolve } from "path";
 import { platform } from "process";
+import { RECOMMENDED_PRAGMA } from "../../config/compact-version.js";
 import { logger } from "../../utils/index.js";
 import type { ExtractContractStructureInput } from "./schemas.js";
 
@@ -594,7 +595,7 @@ export async function extractContractStructure(
       type: "invalid_pragma_format",
       line: lineNum,
       message: `Pragma includes patch version which may cause parse errors`,
-      suggestion: `Use bounded range format: 'pragma language_version >= 0.16 && <= 0.21;'`,
+      suggestion: `Use bounded range format: '${RECOMMENDED_PRAGMA}'`,
       severity: "error",
     });
   }
