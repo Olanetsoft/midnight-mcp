@@ -26,9 +26,9 @@ export const COMPACT_VERSION = {
   /** Minimum supported version */
   min: "0.16",
   /** Maximum supported version */
-  max: "0.21",
+  max: "0.23",
   /** When this config was last updated */
-  lastUpdated: "2026-03-24",
+  lastUpdated: "2026-05-18",
   /** Source of truth for syntax patterns */
   referenceSource: "https://github.com/piotr-iohk/template-contract",
 };
@@ -62,6 +62,14 @@ export const DEPRECATED_PATTERNS = {
     since: "always",
     replacement: "[] (empty tuple)",
     description: "Void return type",
+  },
+  /** Deprecated in: 0.30 (compactc 0.30.0, language 0.22) */
+  nativePoint: {
+    pattern: /\bNativePoint\b/,
+    since: "0.22",
+    replacement: "JubjubPoint",
+    description:
+      "NativePoint type and related circuits (nativePointX, nativePointY, constructNativePoint) were renamed to JubjubPoint / jubjubPointX / jubjubPointY / constructJubjubPoint",
   },
 };
 
@@ -594,5 +602,66 @@ Implementation goes in TypeScript prover, not Compact.`,
     fix: `Use "pure circuit" for helper functions:
 WRONG:  pure function helper(...): Type { }
 CORRECT: pure circuit helper(...): Type { }`,
+  },
+  {
+    error:
+      "apparent use of an old standard-library / ledger operator name NativePoint: the new name is JubjubPoint",
+    cause:
+      "Using the pre-0.22 NativePoint name. Renamed in compactc 0.30.0 (language 0.22).",
+    fix: `Rename to JubjubPoint and related circuits:
+WRONG:  NativePoint, nativePointX(p), nativePointY(p), constructNativePoint(x, y)
+CORRECT: JubjubPoint, jubjubPointX(p), jubjubPointY(p), constructJubjubPoint(x, y)
+NativePoint is rejected at compile time, not silently aliased.`,
+  },
+  {
+    error:
+      'parse error: found keyword "let" (which is reserved for future use)',
+    cause:
+      "Using `let` as an identifier. `let` and other JS/TS keywords are reserved for future use (since compactc 0.28.0).",
+    fix: `Rename the identifier:
+WRONG:  const let = 1;  // or circuit fn(let: Field): []
+CORRECT: const value = 1;  // or circuit fn(value: Field): []
+Other reserved words from JS/TS are also disallowed as identifiers.`,
+  },
+  {
+    error:
+      'parse error: found keyword "const" looking for a program element or end of file',
+    cause:
+      "Declaring `const` at module (top-of-file) scope. `const` is only allowed inside circuit/constructor bodies — there is no module-level constant in Compact.",
+    fix: `Move the constant inside a circuit, or use a pure circuit returning the value:
+WRONG:  const MAX_SUPPLY: Uint<64> = 1000;  // at top of file
+CORRECT: pure circuit max_supply(): Uint<64> { return 1000; }
+Then call max_supply() wherever you need the value.`,
+  },
+  {
+    error: "unexpected character",
+    cause:
+      "Using a single `|` (bitwise OR) in an expression. Compact has no bitwise operators on Uint — only `||` (logical OR) is recognized.",
+    fix: `Compact does not support bitwise OR/AND/XOR/shifts. Replace with arithmetic or branching:
+WRONG:  flags | mask
+CORRECT: flags + mask  // if you know bits don't overlap
+   or:  if (cond) { ... } else { ... }
+Use \`||\` only for Boolean values, not Uints.`,
+  },
+  {
+    error:
+      "Uint width 254 is not between 1 and the maximum Uint width 248 (inclusive)",
+    cause:
+      "Declaring a Uint wider than 248 bits. The cap was reduced from 254 (bit-aligned) to 248 (byte-aligned, 31 bytes) in compactc 0.27.0 to match the ledger storage alignment.",
+    fix: `Use Uint<N> where 1 ≤ N ≤ 248:
+WRONG:  field: Uint<254>
+CORRECT: field: Uint<248>  // 31 bytes — max representable
+For larger values, use Field (unbounded) and cast where needed.`,
+  },
+  {
+    // Not a compiler error — surfaces as a TypeScript type error in generated bindings.
+    error:
+      "Argument of type 'number' is not assignable to parameter of type 'bigint' (convertBytesToUint)",
+    cause:
+      "Passing a JavaScript `number` to convertBytesToUint's `maxval` parameter. Changed to `bigint` in compactc 0.30.101 (language 0.22) to avoid silent precision loss for large Uints.",
+    fix: `Pass a bigint literal for maxval:
+WRONG:  convertBytesToUint(255, n, bytes, src)
+CORRECT: convertBytesToUint(255n, n, bytes, src)
+This is in generated TypeScript bindings — usually you don't call it directly, but if you do, the suffix-n bigint literal is required.`,
   },
 ];

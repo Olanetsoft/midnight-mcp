@@ -1,3 +1,7 @@
+import { COMPACT_VERSION } from "../config/compact-version.js";
+
+const PRAGMA_RANGE = `>= ${COMPACT_VERSION.min} && <= ${COMPACT_VERSION.max}`;
+
 export interface PromptDefinition {
   name: string;
   description: string;
@@ -167,7 +171,7 @@ function generateCreateContractPrompt(
 Call \`midnight-get-latest-syntax\` FIRST to get:
 - The \`quickStartTemplate\` (use as your base)
 - The \`commonMistakes\` array (avoid these errors)
-- Current pragma format: \`pragma language_version >= 0.16 && <= 0.21;\`
+- Current pragma format: \`pragma language_version ${PRAGMA_RANGE};\`
 
 ### Step 2: Generate Contract
 Based on syntax reference, generate the contract using:
@@ -272,7 +276,7 @@ ${contractCode}
 Call \`midnight-extract-contract-structure\` with the contract code to check for:
 - deprecated_ledger_block (should use \`export ledger field: Type;\`)
 - invalid_void_type (should use \`[]\` not \`Void\`)
-- invalid_pragma_format (should use \`>= 0.16 && <= 0.21\`)
+- invalid_pragma_format (should use \`${PRAGMA_RANGE}\`)
 - unexported_enum (enums need \`export\`)
 - deprecated_cell_wrapper
 
@@ -457,7 +461,7 @@ ${contractCode}
 Call \`midnight-extract-contract-structure\` FIRST to check for common syntax errors:
 - deprecated_ledger_block → should use \`export ledger field: Type;\`
 - invalid_void_type → should use \`[]\` not \`Void\`
-- invalid_pragma_format → should use \`>= 0.16 && <= 0.21\`
+- invalid_pragma_format → should use \`${PRAGMA_RANGE}\`
 - unexported_enum → enums need \`export\` keyword
 
 ### Step 2: Get Correct Syntax

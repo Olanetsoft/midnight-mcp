@@ -12,7 +12,7 @@
  */
 
 export const EMBEDDED_DOCS: Record<string, string> = {
-  "midnight://docs/compact-reference": `# Compact Language Syntax Reference (v0.16 - v0.21)
+  "midnight://docs/compact-reference": `# Compact Language Syntax Reference (v0.16 - v0.23)
 
 > **CRITICAL**: This reference is derived from **actual compiling contracts** in the Midnight ecosystem.
 > Always verify syntax against this reference before generating contracts.
@@ -22,7 +22,7 @@ export const EMBEDDED_DOCS: Record<string, string> = {
 Use this as a starting point - it compiles successfully:
 
 \`\`\`compact
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
@@ -45,7 +45,7 @@ export circuit increment(): [] {
 
 **CORRECT** - use bounded range without patch version:
 \`\`\`compact
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 \`\`\`
 
 **WRONG** - these will cause parse errors:
@@ -299,7 +299,7 @@ export circuit authenticated_action(): [] {
 
 ### Commit-Reveal Pattern (COMPLETE, VALIDATED)
 \`\`\`compact
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
@@ -539,7 +539,7 @@ assert(disclose(caller == owner), "Not authorized");
 |---------|---------|
 | \`ledger { field: Type; }\` | \`export ledger field: Type;\` |
 | \`circuit fn(): Void\` | \`circuit fn(): []\` |
-| \`pragma >= 0.20.0\` | \`pragma >= 0.16 && <= 0.21\` |
+| \`pragma >= 0.20.0\` | \`pragma >= 0.16 && <= 0.23\` |
 | \`enum State { ... }\` | \`export enum State { ... }\` |
 | \`if (witness_val == x)\` | \`if (disclose(witness_val == x))\` |
 | \`Cell<Field>\` | \`Field\` (Cell is deprecated) |
@@ -875,7 +875,7 @@ npm install @openzeppelin/compact-contracts
 ## Usage Example
 
 \`\`\`compact
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 import "@openzeppelin/compact-contracts/src/token/FungibleToken"
@@ -917,7 +917,7 @@ The recommended standard for privacy-preserving tokens on Midnight.
 ## Basic Usage
 
 \`\`\`compact
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 import "@openzeppelin/compact-contracts/src/token/FungibleToken"

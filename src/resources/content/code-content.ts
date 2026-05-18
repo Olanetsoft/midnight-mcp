@@ -7,7 +7,7 @@ export const EMBEDDED_CODE: Record<string, string> = {
   "midnight://code/examples/counter": `// Counter Example Contract
 // A simple contract demonstrating basic Compact concepts
 
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
@@ -57,7 +57,7 @@ export circuit isLessThan(threshold: Uint<64>): Boolean {
   "midnight://code/examples/bboard": `// Bulletin Board Example Contract
 // Demonstrates private messaging with selective disclosure
 
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
@@ -107,7 +107,7 @@ export circuit getMessageCount(): Uint<64> {
   "midnight://code/patterns/state-management": `// State Management Pattern
 // Best practices for managing public and private state
 
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
@@ -159,7 +159,7 @@ export circuit revealBalance(user: Opaque<"address">): Field {
   "midnight://code/patterns/access-control": `// Access Control Pattern
 // Implementing permissions and authorization
 
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
@@ -215,7 +215,7 @@ export circuit timeLockedAction(unlockTime: Field): [] {
   "midnight://code/patterns/privacy-preserving": `// Privacy-Preserving Patterns
 // Techniques for maintaining privacy in smart contracts
 
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
@@ -321,7 +321,7 @@ export circuit proveMembership(
   "midnight://code/templates/token": `// Privacy-Preserving Token Template
 // Starter template for token contracts with privacy features
 
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
@@ -381,7 +381,7 @@ export circuit mint(to: Opaque<"address">, amount: Uint<64>): Boolean {
   "midnight://code/templates/voting": `// Private Voting Template
 // Starter template for privacy-preserving voting contracts
 
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
@@ -462,7 +462,7 @@ export circuit addVoter(voter: Opaque<"address">): [] {
   "midnight://code/examples/nullifier": `// Nullifier Pattern Example
 // Demonstrates how to create and use nullifiers to prevent double-spending/actions
 
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
@@ -530,7 +530,7 @@ export circuit voteWithNullifier(
   "midnight://code/examples/hash": `// Hash Functions in Compact
 // Examples of using hash functions for various purposes
 
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
@@ -578,7 +578,7 @@ export circuit reveal(value: Field, randomness: Field): Field {
   "midnight://code/examples/simple-counter": `// Simple Counter Contract
 // Minimal example for learning Compact basics
 
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
@@ -617,7 +617,7 @@ export circuit reset(): [] {
   "midnight://code/templates/basic": `// Basic Compact Contract Template
 // Starting point for new contracts
 
-pragma language_version >= 0.16 && <= 0.21;
+pragma language_version >= 0.16 && <= 0.23;
 
 import CompactStandardLibrary;
 
