@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.19] - 2026-05-18
+
+### Fixed
+
+- **Language Version Range** - Updated supported Compact language version from `0.16-0.21` to `0.16-0.23` (compiler 0.31.0, released 2026-04-29)
+  - `COMPACT_VERSION.max` bumped to `0.23`, `lastUpdated` to `2026-05-18`
+  - Cascades through `RECOMMENDED_PRAGMA`, the `quickStartTemplate` returned by `midnight-get-latest-syntax`, and the deprecated-pattern scanner
+  - Resolves disagreement between `midnight-get-latest-syntax` and `midnight-get-version-info` reported in issue #37
+
+- **Hosted Compiler Endpoint** - `midnight-compile-contract` previously returned `INVALID_RESPONSE` for every input because the hosted service at `compact-playground.up.railway.app` was pinned to compactc 0.29 and rejected current `<= 0.23` pragmas. Service has been redeployed on compactc 0.31.0; success and error responses now parse cleanly through `compileContract()`.
+
+### Updated
+
+- **Hardcoded version literals deduped** - `pragma language_version >= 0.16 && <= 0.21` was string-baked into ~20 places across 5 files (the reason the data drifted right back after the 0.2.18 fix)
+  - `src/prompts/templates.ts` and `src/tools/repository/validation.ts` now interpolate from `COMPACT_VERSION` (won't drift on future bumps)
+  - Embedded code/doc examples in `src/resources/content/code-content.ts`, `src/resources/content/docs-content.ts`, and `src/services/sampling.ts` had their pragma literals bumped to `0.23`
+
+### Added
+
+- **Six new `COMMON_ERRORS` / `commonMistakes` entries** mapping current compactc rejections to fixes. Error messages are verbatim from the compactc source; version attributions verified against the LFDT-Minokawa/compact CHANGELOG.
+  - `NativePoint` → `JubjubPoint` rename (compactc 0.30.0)
+  - `convertBytesToUint(maxval)` parameter type changed from `number` to `bigint` (compactc 0.30.101)
+  - `let` as identifier is reserved for future use (compactc 0.28.0+)
+  - Module-level `const` declarations are rejected (always — grammar doesn't accept them)
+  - Bitwise `|` on `Uint` is rejected (never supported — no bitwise ops on `Uint`)
+  - `Uint<N>` width cap reduced from 254 to 248 bits (compactc 0.27.0)
+
+- **`DEPRECATED_PATTERNS.nativePoint`** - regex entry so the pre-compile scanner flags `NativePoint` usage with a `since: "0.22"` marker
+
 ## [0.2.18] - 2026-03-24
 
 ### Fixed
