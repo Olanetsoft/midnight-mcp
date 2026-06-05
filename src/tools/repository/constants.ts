@@ -126,6 +126,14 @@ export const REPO_ALIASES: Record<string, { owner: string; repo: string }> = {
   stablecoin: { owner: "statera-protocol", repo: "statera-protocol-midnight" },
   "midnight-bank": { owner: "nel349", repo: "midnight-bank" },
   bank: { owner: "nel349", repo: "midnight-bank" },
+
+  // Third-Party / Community (NOT official Midnight, not in midnight-awesome-dapps)
+  // effectstream is a multi-chain Web3 engine (EVM, Midnight, Bitcoin, Cardano,
+  // Avail, Celestia, NEAR). Only its Midnight pieces are relevant here:
+  // @effectstream/midnight-contracts and the evm-midnight-v2 / zswap-da templates.
+  // NOTE: repo currently has NO LICENSE — treat indexed content as reference only.
+  effectstream: { owner: "effectstream", repo: "effectstream" },
+  "effect-stream": { owner: "effectstream", repo: "effectstream" },
 };
 
 // Example definitions
