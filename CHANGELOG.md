@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.20] - 2026-06-05
+
+### Security
+
+- **DNS-rebinding protection on the HTTP transport** - When running in HTTP mode (`--http`), the Streamable HTTP and SSE transports were created without `Origin`/`Host` validation. The MCP SDK ships this protection off by default, which let any website the user visited use a DNS-rebinding trick to complete the MCP handshake and invoke tools against the loopback server — reading back tool output (e.g. local `.compact` file contents) and running up local AI usage via sampling.
+  - Both transports now enable `enableDnsRebindingProtection` with a port-aware loopback allowlist (`127.0.0.1:<port>` / `localhost:<port>`), so requests carrying a foreign `Origin` or `Host` are rejected with `403`.
+  - A matching guard is applied to the GET `/sse` stream, which the SDK does not validate on its own.
+  - Legitimate localhost clients and non-browser CLI clients (no `Origin` header) are unaffected. Added a regression test for the allow/deny logic.
+
+### Added
+
+- **`effectstream` repository alias** - Added `effectstream` / `effect-stream` aliases (→ `effectstream/effectstream`) in a clearly-labeled non-official / community section of `REPO_ALIASES`. effectstream is a third-party multi-chain engine with genuine Midnight pieces (`@effectstream/midnight-contracts`, `evm-midnight-v2` / `zswap-da` templates). It is **not** official Midnight and currently has **no license**, so its indexed content is flagged as reference-only.
+
+### Removed
+
+- **Dead duplicate `src/pipeline/repository.ts`** - Removed a fully orphaned 649-line duplicate of the active `src/tools/repository/` module. It was not imported anywhere, not a build entry, and not covered by tests, and it carried a stale, out-of-sync copy of `REPO_ALIASES` (21 entries vs the authoritative 56). Deleting it removes the duplicate `REPO_ALIASES`, `EXAMPLES`, and `ExampleDefinition` in one move; typecheck, build, and the full test suite pass unchanged.
+
 ## [0.2.19] - 2026-05-18
 
 ### Fixed
