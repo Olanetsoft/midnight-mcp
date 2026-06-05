@@ -910,6 +910,43 @@ const transports = {
 };
 
 /**
+ * Build the DNS-rebinding allowlist for a given port.
+ *
+ * The HTTP server binds to 127.0.0.1, so only loopback hosts are ever valid.
+ * Derived from the actual port (not hardcoded) so non-default ports still work.
+ * Host/Origin matching in the SDK is an exact string compare, so we list both
+ * the `127.0.0.1` and `localhost` forms.
+ */
+export function buildAllowlist(port: number): {
+  allowedHosts: string[];
+  allowedOrigins: string[];
+} {
+  const hosts = [`127.0.0.1:${port}`, `localhost:${port}`];
+  const origins = hosts.flatMap((host) => [
+    `http://${host}`,
+    `https://${host}`,
+  ]);
+  return { allowedHosts: hosts, allowedOrigins: origins };
+}
+
+/**
+ * Decide whether a request's Host/Origin should be rejected as a possible
+ * DNS-rebinding attempt. A present Host/Origin that is not in the allowlist is
+ * blocked; an absent header (e.g. non-browser CLI clients) is allowed through,
+ * matching the SDK's own behavior. Exported for testing.
+ */
+export function isRebindingBlocked(
+  host: string | undefined,
+  origin: string | undefined,
+  allowedHosts: string[],
+  allowedOrigins: string[]
+): boolean {
+  if (host && !allowedHosts.includes(host)) return true;
+  if (origin && !allowedOrigins.includes(origin)) return true;
+  return false;
+}
+
+/**
  * Close all active transports
  */
 async function closeTransports(
@@ -930,6 +967,9 @@ async function closeTransports(
 export async function startHttpServer(port: number = 3000): Promise<void> {
   const mcpServer = await initializeServer();
   const app = express();
+
+  // Allowlist for DNS-rebinding protection (loopback only, port-aware).
+  const { allowedHosts, allowedOrigins } = buildAllowlist(port);
 
   // Parse JSON for the Streamable HTTP endpoint
   app.use("/mcp", express.json());
@@ -955,6 +995,10 @@ export async function startHttpServer(port: number = 3000): Promise<void> {
       // New session initialization
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
+        // Block DNS-rebinding attacks from browser pages (loopback allowlist).
+        enableDnsRebindingProtection: true,
+        allowedHosts,
+        allowedOrigins,
         onsessioninitialized: (newSessionId) => {
           transports.streamable[newSessionId] = transport;
           logger.debug(`New streamable session: ${newSessionId}`);
@@ -996,9 +1040,23 @@ export async function startHttpServer(port: number = 3000): Promise<void> {
   });
 
   // SSE endpoint for server-to-client notifications
-  app.get("/sse", async (_req: Request, res: Response) => {
+  app.get("/sse", async (req: Request, res: Response) => {
+    // The SDK validates POST /messages, but not the GET /sse stream itself.
+    // Add a matching Host/Origin guard here for defense-in-depth.
+    const host = req.headers.host;
+    const origin = req.headers.origin;
+    if (isRebindingBlocked(host, origin, allowedHosts, allowedOrigins)) {
+      logger.warn(`Rejected SSE connection`, { host, origin });
+      res.status(403).send("Forbidden: invalid Host or Origin");
+      return;
+    }
+
     logger.debug("New SSE connection");
-    const transport = new SSEServerTransport("/messages", res);
+    const transport = new SSEServerTransport("/messages", res, {
+      enableDnsRebindingProtection: true,
+      allowedHosts,
+      allowedOrigins,
+    });
     transports.sse[transport.sessionId] = transport;
 
     res.on("close", () => {
