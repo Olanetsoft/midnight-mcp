@@ -9,7 +9,6 @@ import {
   getHealthStatus,
   getQuickHealthStatus,
   getRateLimitStatus,
-  formatRateLimitStatus,
 } from "../../utils/index.js";
 import { searchCache, fileCache, metadataCache } from "../../utils/cache.js";
 import type {
@@ -30,7 +29,9 @@ export async function healthCheck(input: HealthCheckInput) {
     const status = await getHealthStatus();
     return {
       ...status,
-      rateLimit: formatRateLimitStatus(),
+      // Return the structured object (not a formatted string) so the value
+      // conforms to the tool's outputSchema, which declares rateLimit as an object.
+      rateLimit: getRateLimitStatus(),
       cacheStats: {
         search: searchCache.getStats(),
         file: fileCache.getStats(),
@@ -41,7 +42,7 @@ export async function healthCheck(input: HealthCheckInput) {
 
   return {
     ...getQuickHealthStatus(),
-    rateLimit: formatRateLimitStatus(),
+    rateLimit: getRateLimitStatus(),
   };
 }
 
@@ -95,33 +96,44 @@ export async function checkVersion(_input: CheckVersionInput) {
     const latestVersion = data.version;
     const isUpToDate = CURRENT_VERSION === latestVersion;
 
-    return {
+    // Only include updateInstructions/newFeatures when actually outdated.
+    // Omitting them (rather than returning null) keeps the result conformant
+    // with the tool's outputSchema, which declares them as object/array.
+    const result: {
+      currentVersion: string;
+      latestVersion: string;
+      isUpToDate: boolean;
+      message: string;
+      updateInstructions?: Record<string, string>;
+      newFeatures?: string[];
+    } = {
       currentVersion: CURRENT_VERSION,
       latestVersion,
       isUpToDate,
       message: isUpToDate
         ? "✅ You are running the latest version!"
         : `⚠️ UPDATE AVAILABLE: v${latestVersion} (you have v${CURRENT_VERSION})`,
-      updateInstructions: isUpToDate
-        ? null
-        : {
-            step1:
-              "Clear npx cache: rm -rf ~/.npm/_npx (macOS/Linux) or del /s /q %LocalAppData%\\npm-cache\\_npx (Windows)",
-            step2:
-              "Restart Claude Desktop completely (Cmd+Q / Alt+F4, then reopen)",
-            step3:
-              "Or update config to use: npx -y midnight-mcp@latest (forces latest)",
-            alternative:
-              "You can also install globally: npm install -g midnight-mcp@latest",
-          },
-      newFeatures: isUpToDate
-        ? null
-        : [
-            "Auto-update config tool - AI agents update your config automatically",
-            "midnight-extract-contract-structure - Static analysis with 10 pre-compilation checks",
-            "MCP Logging, Progress, Completions capabilities",
-          ],
     };
+
+    if (!isUpToDate) {
+      result.updateInstructions = {
+        step1:
+          "Clear npx cache: rm -rf ~/.npm/_npx (macOS/Linux) or del /s /q %LocalAppData%\\npm-cache\\_npx (Windows)",
+        step2:
+          "Restart Claude Desktop completely (Cmd+Q / Alt+F4, then reopen)",
+        step3:
+          "Or update config to use: npx -y midnight-mcp@latest (forces latest)",
+        alternative:
+          "You can also install globally: npm install -g midnight-mcp@latest",
+      };
+      result.newFeatures = [
+        "Auto-update config tool - AI agents update your config automatically",
+        "midnight-extract-contract-structure - Static analysis with 10 pre-compilation checks",
+        "MCP Logging, Progress, Completions capabilities",
+      ];
+    }
+
+    return result;
   } catch (error: unknown) {
     return {
       currentVersion: CURRENT_VERSION,

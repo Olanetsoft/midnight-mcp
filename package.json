@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "start": "node dist/bin.js --stdio",
+    "start": "node dist/bin.js",
     "start:http": "node dist/bin.js --http",
     "dev": "NODE_ENV=development tsup --watch",
     "test": "vitest",
