@@ -75,7 +75,7 @@ npm run deploy
 
 </details>
 
-## Indexed Repositories (102)
+## Indexed Repositories (115)
 
 All **non-archived** repositories from midnightntwrk org + community partners.
 Requires `MIDNIGHT_GITHUB_TOKEN` secret with org access for private repos.
@@ -87,17 +87,17 @@ Requires `MIDNIGHT_GITHUB_TOKEN` secret with org access for private repos.
 | Core Infrastructure  | 9     | `midnight-node`, `midnight-indexer`, `midnight-ledger`, `midnight-zk`       |
 | ZK & Cryptography    | 6     | `midnight-trusted-setup`, `fri`, `galois_recursion`, `pluto_eris`           |
 | Documentation        | 5     | `midnight-docs`, `midnight-improvement-proposals`, `midnight-architecture`  |
-| Examples & Templates | 8     | `example-counter`, `example-bboard`, `example-dex`, `example-DAO`           |
+| Examples & Templates | 18    | `example-counter`, `example-bboard`, `example-kitties`, `example-zkloan`    |
 | Identity             | 5     | `midnight-did`, `midnight-did-resolver`, `midnight-verifiable-credentials`  |
 | Contracts & Bridges  | 3     | `midnight-contracts`, `midnight-committee-bridge-contracts`                 |
 | Token Distribution   | 4     | `night-token-distribution`, `midnight-tcnight-mint`                         |
-| Developer Tools      | 4     | `setup-compact-action`, `upload-sarif-github-action`, `midnight-dev-utils`  |
+| Developer Tools      | 5     | `setup-compact-action`, `midnight-dev-utils`, `midnight-local-dev`          |
 | Infrastructure       | 6     | `midnight-monitoring`, `midnight-tracing`, `midnight-operations`            |
 | Solutions & Apps     | 7     | `midnight-solutions`, `midnight-website-next`, `nightcap`, `ocp`            |
 | QA & Testing         | 1     | `midnight-qa-demo`                                                          |
 | Community            | 3     | `contributor-hub`, `lfdt-project-proposals`, `UTxO-Scalability`             |
 | Glacier Drop         | 15    | `midnight-glacier-drop-tools`, `gd-claim-api`, `gd-claim-portal`            |
-| Partners             | 14    | OpenZeppelin, BrickTowers, MeshJS, PaimaStudios, hackathon winners          |
+| Partners & Community | 20    | OpenZeppelin, BrickTowers, MeshJS, PaimaStudios, hackathon winners, Olanetsoft |
 
 <details>
 <summary><strong>Indexing Configuration</strong></summary>

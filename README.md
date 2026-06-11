@@ -183,7 +183,7 @@ Quick references available offline:
 
 ## Indexed Repositories
 
-The API indexes **102+ Midnight repositories** from the entire Midnight ecosystem:
+The API indexes **115+ Midnight repositories** from the entire Midnight ecosystem:
 
 | Category                 | Count | Key Repositories                                                                 |
 | ------------------------ | ----- | -------------------------------------------------------------------------------- |
@@ -192,15 +192,15 @@ The API indexes **102+ Midnight repositories** from the entire Midnight ecosyste
 | **Core Infrastructure**  | 9     | `midnight-node`, `midnight-indexer`, `midnight-ledger`, `midnight-zk`            |
 | **ZK & Cryptography**    | 6     | `midnight-trusted-setup`, `fri`, `galois_recursion`, `pluto_eris`                |
 | **Documentation**        | 5     | `midnight-docs`, `midnight-improvement-proposals`, `midnight-architecture`       |
-| **Examples & Templates** | 8     | `example-counter`, `example-bboard`, `example-dex`, `example-DAO`                |
+| **Examples & Templates** | 18    | `example-counter`, `example-bboard`, `example-kitties`, `example-zkloan`         |
 | **Identity**             | 5     | `midnight-did`, `midnight-did-resolver`, `midnight-verifiable-credentials`       |
-| **Developer Tools**      | 4     | `setup-compact-action`, `upload-sarif-github-action`, `midnight-dev-utils`       |
+| **Developer Tools**      | 5     | `setup-compact-action`, `midnight-dev-utils`, `midnight-local-dev`               |
 | **Solutions & Apps**     | 7     | `midnight-solutions`, `midnight-website-next`, `nightcap`, `ocp`                 |
 | **Glacier Drop**         | 15    | `midnight-glacier-drop-tools`, `gd-claim-api`, `gd-claim-portal`                 |
-| **Partners**             | 14    | OpenZeppelin, BrickTowers, MeshJS, PaimaStudios, hackathon winners               |
+| **Partners & Community** | 20    | OpenZeppelin, BrickTowers, MeshJS, PaimaStudios, hackathon winners, Olanetsoft   |
 | **Other**                | 18+   | Contracts, bridges, token distribution, monitoring, QA tools, community projects |
 
-All **non-archived** repositories from the `midnightntwrk` organization plus community partners. See [api/README.md](api/README.md#indexed-repositories-102) for the complete list.
+All **non-archived** repositories from the `midnightntwrk` organization plus community partners. See [api/README.md](api/README.md#indexed-repositories-115) for the complete list.
 
 ---
 
