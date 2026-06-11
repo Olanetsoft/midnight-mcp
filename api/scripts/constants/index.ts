@@ -88,7 +88,7 @@ export const SKIP_DIRS = new Set([
 // Requires MIDNIGHT_GITHUB_TOKEN with org access for private repos
 export const REPOSITORIES: RepoConfig[] = [
   // ============================================
-  // MIDNIGHTNTWRK ORG - ALL NON-ARCHIVED (88 repos)
+  // MIDNIGHTNTWRK ORG - ALL NON-ARCHIVED (95 repos)
   // ============================================
 
   // Core Language & Compiler
@@ -147,6 +147,16 @@ export const REPOSITORIES: RepoConfig[] = [
   { owner: "midnightntwrk", repo: "example-dex", branch: "main" },
   { owner: "midnightntwrk", repo: "example-DAO", branch: "main" },
   { owner: "midnightntwrk", repo: "example-proofshare", branch: "main" },
+  { owner: "midnightntwrk", repo: "example-hello-world", branch: "main" },
+  { owner: "midnightntwrk", repo: "example-kitties", branch: "main" },
+  { owner: "midnightntwrk", repo: "example-nft-contracts", branch: "main" },
+  { owner: "midnightntwrk", repo: "example-locker", branch: "main" },
+  { owner: "midnightntwrk", repo: "example-zkloan", branch: "main" },
+  { owner: "midnightntwrk", repo: "example-battleship", branch: "main" },
+  { owner: "midnightntwrk", repo: "example-private-party", branch: "main" },
+  { owner: "midnightntwrk", repo: "midnight-dust-generator", branch: "main" },
+  { owner: "midnightntwrk", repo: "midnight-tip-jar", branch: "main" },
+  { owner: "midnightntwrk", repo: "midnight-leaderboard", branch: "main" },
   { owner: "midnightntwrk", repo: "midnight-awesome-dapps", branch: "main" },
   { owner: "midnightntwrk", repo: "create-mn-app", branch: "main" },
   { owner: "midnightntwrk", repo: "midnight-template-repo", branch: "main" },
@@ -206,6 +216,7 @@ export const REPOSITORIES: RepoConfig[] = [
   },
   { owner: "midnightntwrk", repo: "season-action", branch: "main" },
   { owner: "midnightntwrk", repo: "midnight-dev-utils", branch: "main" },
+  { owner: "midnightntwrk", repo: "midnight-local-dev", branch: "main" },
 
   // Infrastructure & Operations
   { owner: "midnightntwrk", repo: "midnight-monitoring", branch: "main" },
@@ -262,7 +273,7 @@ export const REPOSITORIES: RepoConfig[] = [
   { owner: "midnightntwrk", repo: "gd-testing", branch: "main" },
 
   // ============================================
-  // THIRD-PARTY & COMMUNITY REPOS (14 repos)
+  // THIRD-PARTY & COMMUNITY REPOS (20 repos)
   // ============================================
 
   // OpenZeppelin (Official Partner)
@@ -297,4 +308,11 @@ export const REPOSITORIES: RepoConfig[] = [
     repo: "midnight-impact-rps-example",
     branch: "main",
   },
+
+  // Community Examples & Learning Resources (Olanetsoft)
+  { owner: "Olanetsoft", repo: "midnight-mcp", branch: "main" },
+  { owner: "Olanetsoft", repo: "compact-playground", branch: "main" },
+  { owner: "Olanetsoft", repo: "compact-by-example", branch: "main" },
+  { owner: "Olanetsoft", repo: "learn-compact", branch: "main" },
+  { owner: "Olanetsoft", repo: "example-dust-sponsorship", branch: "main" },
 ];

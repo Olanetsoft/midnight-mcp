@@ -22,9 +22,56 @@ export const REPO_ALIASES: Record<string, { owner: string; repo: string }> = {
   bboard: { owner: "midnightntwrk", repo: "example-bboard" },
   "example-dex": { owner: "midnightntwrk", repo: "example-dex" },
   dex: { owner: "midnightntwrk", repo: "example-dex" },
+  "example-hello-world": {
+    owner: "midnightntwrk",
+    repo: "example-hello-world",
+  },
+  "hello-world": { owner: "midnightntwrk", repo: "example-hello-world" },
+  "example-kitties": { owner: "midnightntwrk", repo: "example-kitties" },
+  kitties: { owner: "midnightntwrk", repo: "example-kitties" },
+  cryptokitties: { owner: "midnightntwrk", repo: "example-kitties" },
+  "example-nft-contracts": {
+    owner: "midnightntwrk",
+    repo: "example-nft-contracts",
+  },
+  "nft-contracts": { owner: "midnightntwrk", repo: "example-nft-contracts" },
+  nft: { owner: "midnightntwrk", repo: "example-nft-contracts" },
+  "example-locker": { owner: "midnightntwrk", repo: "example-locker" },
+  locker: { owner: "midnightntwrk", repo: "example-locker" },
+  "example-zkloan": { owner: "midnightntwrk", repo: "example-zkloan" },
+  zkloan: { owner: "midnightntwrk", repo: "example-zkloan" },
+  "example-battleship": {
+    owner: "midnightntwrk",
+    repo: "example-battleship",
+  },
+  "example-private-party": {
+    owner: "midnightntwrk",
+    repo: "example-private-party",
+  },
+  "private-party": { owner: "midnightntwrk", repo: "example-private-party" },
+  "midnight-dust-generator": {
+    owner: "midnightntwrk",
+    repo: "midnight-dust-generator",
+  },
+  "dust-generator": {
+    owner: "midnightntwrk",
+    repo: "midnight-dust-generator",
+  },
+  "midnight-tip-jar": { owner: "midnightntwrk", repo: "midnight-tip-jar" },
+  "tip-jar": { owner: "midnightntwrk", repo: "midnight-tip-jar" },
+  "midnight-leaderboard": {
+    owner: "midnightntwrk",
+    repo: "midnight-leaderboard",
+  },
+  leaderboard: { owner: "midnightntwrk", repo: "midnight-leaderboard" },
 
   // Developer Tools
   "create-mn-app": { owner: "midnightntwrk", repo: "create-mn-app" },
+  "midnight-local-dev": {
+    owner: "midnightntwrk",
+    repo: "midnight-local-dev",
+  },
+  "local-dev": { owner: "midnightntwrk", repo: "midnight-local-dev" },
   "midnight-wallet": { owner: "midnightntwrk", repo: "midnight-wallet" },
   wallet: { owner: "midnightntwrk", repo: "midnight-wallet" },
 
@@ -134,6 +181,22 @@ export const REPO_ALIASES: Record<string, { owner: string; repo: string }> = {
   // NOTE: repo currently has NO LICENSE — treat indexed content as reference only.
   effectstream: { owner: "effectstream", repo: "effectstream" },
   "effect-stream": { owner: "effectstream", repo: "effectstream" },
+
+  // Community Examples & Learning Resources (Olanetsoft)
+  "midnight-mcp": { owner: "Olanetsoft", repo: "midnight-mcp" },
+  mcp: { owner: "Olanetsoft", repo: "midnight-mcp" },
+  "compact-playground": { owner: "Olanetsoft", repo: "compact-playground" },
+  playground: { owner: "Olanetsoft", repo: "compact-playground" },
+  "compact-by-example": { owner: "Olanetsoft", repo: "compact-by-example" },
+  "learn-compact": { owner: "Olanetsoft", repo: "learn-compact" },
+  "example-dust-sponsorship": {
+    owner: "Olanetsoft",
+    repo: "example-dust-sponsorship",
+  },
+  "dust-sponsorship": {
+    owner: "Olanetsoft",
+    repo: "example-dust-sponsorship",
+  },
 };
 
 // Example definitions

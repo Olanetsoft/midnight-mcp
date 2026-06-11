@@ -9,3 +9,6 @@ coverage/
 data/
 cache/
 *.tgz
+
+# Local editor/agent tooling state
+.midnight-expert/
