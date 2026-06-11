@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.21] - 2026-06-11
+
+### Fixed
+
+- **Health tool output-schema conformance** - `midnight-health-check` and `midnight-check-version` were rejected by MCP clients ("Failed to call tool") because their `structuredContent` violated their declared `outputSchema`. `midnight-health-check` returned `rateLimit` as a formatted string while the schema declares an object; it now returns the structured rate-limit object. `midnight-check-version` returned `null` for `updateInstructions`/`newFeatures` when already on the latest version (schema declares object/array); those fields are now omitted when up to date. Added a regression test asserting health-tool outputs conform to their schemas.
+- **Broken `npm start` script** - Dropped the unsupported `--stdio` flag (stdio is the default transport), so `npm start` launches the server instead of erroring on an unknown argument.
+
+### Added
+
+- **16 indexed repositories with aliases** - Added 11 official Midnight examples (`example-kitties`, `example-hello-world`, `example-nft-contracts`, `example-locker`, `example-zkloan`, `example-battleship`, `example-private-party`, `midnight-dust-generator`, `midnight-tip-jar`, `midnight-leaderboard`), the `midnight-local-dev` tooling repo, and five community learning repos (`midnight-mcp`, `compact-playground`, `compact-by-example`, `learn-compact`, `example-dust-sponsorship`) to the indexing list and `REPO_ALIASES`. README repo-count tables corrected to 115 indexed (95 midnightntwrk + 20 third-party).
+
 ## [0.2.20] - 2026-06-05
 
 ### Security
