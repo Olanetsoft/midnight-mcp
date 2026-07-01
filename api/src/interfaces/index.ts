@@ -10,6 +10,9 @@ export type Bindings = {
   ENVIRONMENT: string;
   METRICS: KVNamespace;
   DASHBOARD_PASSWORD?: string;
+  // Optional bearer token for private/self-hosted deployments. When set, all
+  // routes except the health probes require `Authorization: Bearer <token>`.
+  API_AUTH_TOKEN?: string;
 };
 
 // ============== Metrics Types ==============

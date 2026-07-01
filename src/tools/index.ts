@@ -91,6 +91,7 @@ export type {
 } from "../types/index.js";
 
 // Combined tool list for MCP server
+import { deprecationTools } from "./deprecation/index.js";
 import { searchTools } from "./search/index.js";
 import { analyzeTools } from "./analyze/index.js";
 import { repositoryTools } from "./repository/index.js";
@@ -100,6 +101,7 @@ import { metaTools } from "./meta/index.js";
 import type { ExtendedToolDefinition } from "../types/index.js";
 
 export const allTools: ExtendedToolDefinition[] = [
+  ...deprecationTools, // Redirect to the official replacements, surfaced first
   ...metaTools, // Discovery tools first for visibility
   ...searchTools,
   ...analyzeTools,
@@ -107,3 +109,6 @@ export const allTools: ExtendedToolDefinition[] = [
   ...healthTools,
   ...generationTools,
 ];
+
+// Re-export the redirect tool list for consumers/tests.
+export { deprecationTools } from "./deprecation/index.js";

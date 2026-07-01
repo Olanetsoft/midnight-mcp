@@ -1,23 +1,16 @@
+# PUBLIC deployment = deprecation stub (see src/stub.ts).
+#
+# midnight-mcp is retired; this URL now only redirects callers to the official
+# Kapa MCP + Midnight Expert. It intentionally has NO Vectorize / KV / OpenAI
+# bindings, so it cannot leak data or spend the OpenAI key.
+#
+# The real search backend (src/index.ts) is deployed separately under a private
+# name via `wrangler deploy -c wrangler.private.toml`.
+#
+# Deploy the stub:  wrangler deploy
 name = "midnight-mcp-api"
-main = "src/index.ts"
+main = "src/stub.ts"
 compatibility_date = "2024-12-01"
 
 [vars]
 ENVIRONMENT = "production"
-
-# Vectorize index for semantic search
-[[vectorize]]
-binding = "VECTORIZE"
-index_name = "midnight-code"
-
-# KV namespace for metrics storage
-[[kv_namespaces]]
-binding = "METRICS"
-id = "adc06e61998c417684ee353791077992"
-
-# Rate limiting
-# [[unsafe.bindings]]
-# name = "RATE_LIMITER"
-# type = "ratelimit"
-# namespace_id = "1"
-# simple = { limit = 60, period = 60 }

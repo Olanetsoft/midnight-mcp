@@ -120,7 +120,7 @@ export const metaTools: ExtendedToolDefinition[] = [
   {
     name: "midnight-list-tool-categories",
     description:
-      "📋 DISCOVERY TOOL: List available tool categories for progressive exploration. Use this FIRST to understand what capabilities are available, then drill into specific categories with midnight-list-category-tools. Reduces cognitive load by organizing 28 tools into 7 logical groups.",
+      "📋 DISCOVERY TOOL: List available tool categories for progressive exploration. Use this FIRST to understand what capabilities are available, then drill into specific categories with midnight-list-category-tools. Reduces cognitive load by organizing the available tools into logical groups.",
     inputSchema: {
       type: "object" as const,
       properties: {

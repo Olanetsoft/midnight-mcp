@@ -435,6 +435,16 @@ function registerCompletionsHandler(server: Server): void {
 }
 
 /**
+ * Prepended to every tool description so any client still using this MCP is
+ * redirected to the official replacements (Kapa + Midnight Expert) at the point
+ * of use. See the migration guide for details.
+ */
+const DEPRECATION_PREFIX =
+  "[DEPRECATED] midnight-mcp is being retired — use Kapa (docs Q&A) + " +
+  "Midnight Expert (dev): " +
+  "https://docs.midnight.network/blog/migrating-to-kapa-and-midnight-expert — ";
+
+/**
  * Register tool handlers
  */
 function registerToolHandlers(server: Server): void {
@@ -444,7 +454,7 @@ function registerToolHandlers(server: Server): void {
     return {
       tools: allTools.map((tool) => ({
         name: tool.name,
-        description: tool.description,
+        description: DEPRECATION_PREFIX + tool.description,
         inputSchema: tool.inputSchema,
         // Include output schema if defined
         ...(tool.outputSchema && { outputSchema: tool.outputSchema }),

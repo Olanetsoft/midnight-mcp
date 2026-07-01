@@ -12,8 +12,18 @@ const ConfigSchema = z.object({
     .string()
     .default("https://midnight-mcp-api.midnightmcp.workers.dev"),
 
+  // Optional bearer token sent to the hosted API. Needed when pointing
+  // MIDNIGHT_API_URL at a private/self-hosted backend that requires auth.
+  hostedApiToken: z.string().optional(),
+
   // GitHub
   githubToken: z.string().optional(),
+
+  // Extra GitHub repo owners allowed for the resolveRepo() org/repo
+  // fall-through, on top of the built-in vetted list. Comma-separated via
+  // MIDNIGHT_MCP_ALLOWED_REPO_OWNERS. Lets local users add their own repos
+  // without reopening arbitrary-repo access.
+  allowedRepoOwners: z.array(z.string()).default([]),
 
   // Vector Database (only needed for local mode)
   chromaUrl: z.string().default("http://localhost:8000"),
@@ -43,7 +53,13 @@ function loadConfig(): Config {
   const rawConfig = {
     mode: isLocalMode ? "local" : "hosted",
     hostedApiUrl: process.env.MIDNIGHT_API_URL,
+    hostedApiToken: process.env.MIDNIGHT_API_TOKEN,
     githubToken: process.env.GITHUB_TOKEN,
+    allowedRepoOwners: process.env.MIDNIGHT_MCP_ALLOWED_REPO_OWNERS
+      ? process.env.MIDNIGHT_MCP_ALLOWED_REPO_OWNERS.split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : undefined,
     chromaUrl: process.env.CHROMA_URL,
     openaiApiKey: process.env.OPENAI_API_KEY,
     embeddingModel: process.env.EMBEDDING_MODEL,
