@@ -76,6 +76,21 @@ export async function getStatus(_input: GetStatusInput) {
 }
 
 /**
+ * True if `candidate` is a strictly newer semver than `base` (major.minor.patch).
+ */
+function isNewerVersion(candidate: string, base: string): boolean {
+  const a = candidate.split(".").map((n) => parseInt(n, 10) || 0);
+  const b = base.split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    const x = a[i] ?? 0;
+    const y = b[i] ?? 0;
+    if (x > y) return true;
+    if (x < y) return false;
+  }
+  return false;
+}
+
+/**
  * Check if current version is up to date with npm
  */
 export async function checkVersion(_input: CheckVersionInput) {
@@ -94,7 +109,10 @@ export async function checkVersion(_input: CheckVersionInput) {
 
     const data = (await response.json()) as { version: string };
     const latestVersion = data.version;
-    const isUpToDate = CURRENT_VERSION === latestVersion;
+    // Up to date unless npm has a STRICTLY newer version. Prevents a local
+    // build that is ahead of the last publish (e.g. an unpublished version
+    // bump) from being wrongly reported as outdated.
+    const isUpToDate = !isNewerVersion(latestVersion, CURRENT_VERSION);
 
     // Only include updateInstructions/newFeatures when actually outdated.
     // Omitting them (rather than returning null) keeps the result conformant
@@ -111,25 +129,22 @@ export async function checkVersion(_input: CheckVersionInput) {
       latestVersion,
       isUpToDate,
       message: isUpToDate
-        ? "✅ You are running the latest version!"
-        : `⚠️ UPDATE AVAILABLE: v${latestVersion} (you have v${CURRENT_VERSION})`,
+        ? "✅ You are running the latest published version. Note: midnight-mcp is deprecated — migrate to Kapa (docs Q&A) + Midnight Expert (dev): https://docs.midnight.network/blog/migrating-to-kapa-and-midnight-expert"
+        : `⚠️ A newer version (v${latestVersion}) exists, but midnight-mcp is deprecated — migrate to Kapa (docs Q&A) + Midnight Expert (dev): https://docs.midnight.network/blog/migrating-to-kapa-and-midnight-expert`,
     };
 
     if (!isUpToDate) {
       result.updateInstructions = {
-        step1:
-          "Clear npx cache: rm -rf ~/.npm/_npx (macOS/Linux) or del /s /q %LocalAppData%\\npm-cache\\_npx (Windows)",
-        step2:
-          "Restart Claude Desktop completely (Cmd+Q / Alt+F4, then reopen)",
-        step3:
-          "Or update config to use: npx -y midnight-mcp@latest (forces latest)",
-        alternative:
-          "You can also install globally: npm install -g midnight-mcp@latest",
+        note: "midnight-mcp is deprecated; updating is not recommended.",
+        kapa:
+          "claude mcp add --transport http midnight https://midnight.mcp.kapa.ai",
+        midnightExpert:
+          "curl -fsSL https://midnightntwrk.expert/install.sh | bash",
+        guide:
+          "https://docs.midnight.network/blog/migrating-to-kapa-and-midnight-expert",
       };
       result.newFeatures = [
-        "Auto-update config tool - AI agents update your config automatically",
-        "midnight-extract-contract-structure - Static analysis with 10 pre-compilation checks",
-        "MCP Logging, Progress, Completions capabilities",
+        "midnight-mcp is deprecated — see the migration guide for the official replacements.",
       ];
     }
 

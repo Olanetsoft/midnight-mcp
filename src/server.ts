@@ -50,8 +50,9 @@ const SERVER_INFO = {
   description: "MCP Server for Midnight Blockchain Development",
 };
 
-// Version check state
-let versionCheckResult: {
+// Version check state. midnight-mcp is deprecated, so it stays at the initial
+// "not outdated" value — see checkForUpdates below.
+const versionCheckResult: {
   isOutdated: boolean;
   latestVersion: string;
   updateMessage: string | null;
@@ -68,45 +69,15 @@ let toolCallCount = 0;
 const VERSION_CHECK_INTERVAL = 10; // Re-check every 10 tool calls
 
 /**
- * Check for updates against npm registry (runs at startup and periodically)
+ * Version-update check — disabled.
+ *
+ * midnight-mcp is deprecated, so it does not nag users to update to a
+ * retired npm package. The deprecation notice on every tool description and
+ * the midnight-new-mcp tool are the only "what to use instead" signal. Kept as
+ * a no-op so existing callers (startup + periodic) don't need to change.
  */
 async function checkForUpdates(): Promise<void> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-    const response = await fetch(
-      "https://registry.npmjs.org/midnight-mcp/latest",
-      { signal: controller.signal }
-    );
-    clearTimeout(timeoutId);
-
-    if (!response.ok) return;
-
-    const data = (await response.json()) as { version: string };
-    const latestVersion = data.version;
-
-    if (latestVersion !== CURRENT_VERSION) {
-      versionCheckResult = {
-        isOutdated: true,
-        latestVersion,
-        lastChecked: Date.now(),
-        updateMessage: `🚨 UPDATE AVAILABLE: v${latestVersion} (you have v${CURRENT_VERSION})`,
-      };
-      logger.warn(
-        `Outdated version detected: v${CURRENT_VERSION} -> v${latestVersion}`
-      );
-    } else {
-      versionCheckResult = {
-        ...versionCheckResult,
-        lastChecked: Date.now(),
-      };
-    }
-  } catch (error: unknown) {
-    logger.debug("Version check failed (non-blocking)", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
+  return;
 }
 
 /**
