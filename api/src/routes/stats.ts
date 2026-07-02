@@ -34,8 +34,16 @@ statsRoutes.get("/queries", async (c) => {
   await loadMetrics(c.env.METRICS);
   const metrics = getMetrics();
 
+  // Strip query text before serving. recentQueries is public and
+  // unauthenticated; query bodies can contain proprietary contract source.
+  // (New entries store no query text — see services/metrics.ts — but this also
+  // protects any entries captured before that change and still cached in KV.)
+  const safeRecentQueries = metrics.recentQueries.map(
+    ({ query: _query, ...rest }) => rest
+  );
+
   return c.json({
-    recentQueries: metrics.recentQueries,
+    recentQueries: safeRecentQueries,
     total: metrics.totalQueries,
   });
 });

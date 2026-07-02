@@ -73,9 +73,13 @@ export function trackQuery(
     }
   });
 
-  // Keep last 100 queries
+  // Keep last 100 queries.
+  // NOTE: query text is intentionally NOT stored. Search queries can contain
+  // proprietary contract source, and recentQueries is exposed publicly
+  // (see routes/stats.ts and the dashboard). We retain only non-sensitive
+  // analytics (endpoint, scores, counts) — never the query body.
   const logEntry: QueryLog = {
-    query: query.slice(0, 100), // Truncate for storage
+    query: "",
     endpoint,
     timestamp: new Date().toISOString(),
     resultsCount: matches.length,

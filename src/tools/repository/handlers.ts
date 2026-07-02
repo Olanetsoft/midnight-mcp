@@ -7,6 +7,7 @@ import { githubClient, GitHubCommit } from "../../pipeline/index.js";
 import { releaseTracker } from "../../pipeline/releases.js";
 import {
   logger,
+  config,
   DEFAULT_REPOSITORIES,
   SelfCorrectionHints,
 } from "../../utils/index.js";
@@ -47,6 +48,21 @@ import type {
 export { extractContractStructure } from "./validation.js";
 
 /**
+ * Owners allowed for the bare "owner/repo" fall-through in resolveRepo().
+ * Seeded from the vetted alias + configured-repo lists and extended by the
+ * operator via MIDNIGHT_MCP_ALLOWED_REPO_OWNERS. Without this gate a
+ * prompt-injected model could read ANY GitHub repo — including private ones —
+ * with the operator's token.
+ */
+const ALLOWED_REPO_OWNERS: Set<string> = new Set(
+  [
+    ...Object.values(REPO_ALIASES).map((a) => a.owner),
+    ...DEFAULT_REPOSITORIES.map((r) => r.owner),
+    ...config.allowedRepoOwners,
+  ].map((owner) => owner.toLowerCase())
+);
+
+/**
  * Resolve repository name alias to owner/repo
  */
 export function resolveRepo(
@@ -65,10 +81,15 @@ export function resolveRepo(
     }
   }
 
-  // Assume it's a full org/repo name
+  // Assume it's a full org/repo name — but only for allowlisted owners.
+  // Returning null for anything else makes callers emit the UNKNOWN_REPO hint
+  // instead of reading an arbitrary repo with the operator's token.
   if (name.includes("/")) {
     const [owner, repo] = name.split("/");
-    return { owner, repo };
+    if (owner && repo && ALLOWED_REPO_OWNERS.has(owner.toLowerCase())) {
+      return { owner, repo };
+    }
+    return null;
   }
 
   return null;

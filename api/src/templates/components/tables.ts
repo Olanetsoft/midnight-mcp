@@ -139,13 +139,9 @@ export function generateQueriesTable(
     return `<p class="empty">${emptyMessage}</p>`;
   }
 
+  // Query text is intentionally NOT rendered. Search queries can contain
+  // proprietary contract source; only non-sensitive analytics are shown.
   const columns: TableColumn<(typeof queries)[0]>[] = [
-    {
-      key: "query",
-      label: "Query",
-      render: (q) =>
-        `<span style="word-break: break-word; white-space: normal;">${escapeHtml(q.query)}</span>`,
-    },
     { key: "endpoint", label: "Type" },
     {
       key: "topScore",

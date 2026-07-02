@@ -1,13 +1,13 @@
 {
   "name": "midnight-mcp",
-  "version": "0.2.0",
-  "description": "MCP Server for Midnight Blockchain Development - Compact smart contracts, zero-knowledge proofs, and TypeScript integration",
+  "version": "0.3.0",
+  "description": "[DEPRECATED — migrate to Kapa + Midnight Expert: https://docs.midnight.network/blog/migrating-to-kapa-and-midnight-expert] MCP Server for Midnight Blockchain Development - Compact smart contracts, zero-knowledge proofs, and TypeScript integration",
   "author": "Idris Olubisi",
   "license": "MIT",
   "repository": "https://github.com/Olanetsoft/midnight-mcp",
   "homepage": "https://github.com/Olanetsoft/midnight-mcp#readme",
   "transport": ["stdio", "http"],
-  "tools": 26,
+  "tools": 31,
   "resources": 9,
   "prompts": 5,
   "keywords": [

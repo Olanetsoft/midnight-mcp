@@ -1,10 +1,14 @@
 /**
- * Hosted Compact Compiler Service
+ * Compact Compiler Service (opt-in)
  *
- * Integrates with the hosted Compact compiler API to provide
- * real-time contract compilation and validation.
+ * Integrates with a Compact compiler HTTP API for real-time contract
+ * compilation and validation.
  *
- * API: https://compact-playground.up.railway.app
+ * Privacy: there is NO default compiler endpoint. Contract source is only ever
+ * sent to whatever COMPACT_COMPILER_URL points at, so with it unset nothing
+ * leaves the machine and the analyze tool falls back to local static analysis.
+ * Point COMPACT_COMPILER_URL at a compiler you run yourself to enable real
+ * compilation.
  */
 
 import { logger } from "../utils/logger.js";
@@ -13,9 +17,15 @@ import { logger } from "../utils/logger.js";
 // Configuration
 // =============================================================================
 
-const COMPILER_API_URL =
-  process.env.COMPACT_COMPILER_URL ||
-  "https://compact-playground.up.railway.app";
+/**
+ * Resolve the configured compiler endpoint at call time. Opt-in only: returns
+ * undefined when COMPACT_COMPILER_URL is unset, which keeps contract source on
+ * the local machine by default.
+ */
+function getConfiguredCompilerUrl(): string | undefined {
+  const url = process.env.COMPACT_COMPILER_URL?.trim();
+  return url ? url : undefined;
+}
 
 const COMPILER_TIMEOUT = 30000; // 30 seconds
 const MAX_CODE_SIZE = 100 * 1024; // 100 KB
@@ -106,11 +116,20 @@ export async function checkCompilerHealth(): Promise<{
   version?: string;
   error?: string;
 }> {
+  const url = getConfiguredCompilerUrl();
+  if (!url) {
+    return {
+      available: false,
+      error:
+        "No compiler configured. Set COMPACT_COMPILER_URL to a compiler you run yourself; contract source is never sent to a third-party compiler by default.",
+    };
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
 
   try {
-    const response = await fetch(`${COMPILER_API_URL}/health`, {
+    const response = await fetch(`${url}/health`, {
       method: "GET",
       signal: controller.signal,
     });
@@ -172,6 +191,19 @@ export async function compileContract(
     };
   }
 
+  const url = getConfiguredCompilerUrl();
+  if (!url) {
+    // No compiler configured — never send source off-box. The analyze tool
+    // treats serviceAvailable=false as "fall back to local static analysis".
+    return {
+      success: false,
+      message:
+        "No compiler service configured. Set COMPACT_COMPILER_URL to a compiler you run yourself to enable compilation; contract source is not sent to any third-party by default.",
+      error: "COMPILER_NOT_CONFIGURED",
+      serviceAvailable: false,
+    };
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), COMPILER_TIMEOUT);
 
@@ -189,7 +221,7 @@ export async function compileContract(
       options: requestBody.options,
     });
 
-    const response = await fetch(`${COMPILER_API_URL}/compile`, {
+    const response = await fetch(`${url}/compile`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -351,6 +383,6 @@ export async function fullCompile(code: string): Promise<CompilationResult> {
 /**
  * Get compiler service URL (for diagnostics)
  */
-export function getCompilerUrl(): string {
-  return COMPILER_API_URL;
+export function getCompilerUrl(): string | undefined {
+  return getConfiguredCompilerUrl();
 }

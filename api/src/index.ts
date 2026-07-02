@@ -24,10 +24,28 @@ app.use(
   cors({
     origin: "*",
     allowMethods: ["GET", "POST", "OPTIONS"],
-    allowHeaders: ["Content-Type"],
+    allowHeaders: ["Content-Type", "Authorization"],
     maxAge: 86400, // 24 hours
   })
 );
+
+// Optional bearer auth for private/self-hosted deployments. When API_AUTH_TOKEN
+// is set, every request except the health probes must send
+// `Authorization: Bearer <token>`. Unset = open (preserves prior behaviour).
+app.use("*", async (c, next) => {
+  const token = c.env.API_AUTH_TOKEN;
+  if (!token) return next();
+
+  const path = new URL(c.req.url).pathname;
+  if (c.req.method === "OPTIONS" || path === "/" || path === "/health") {
+    return next();
+  }
+
+  if (c.req.header("Authorization") !== `Bearer ${token}`) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  return next();
+});
 
 // Mount routes
 app.route("/", healthRoutes);

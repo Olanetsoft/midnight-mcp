@@ -1,7 +1,7 @@
 {
   "name": "midnight-mcp",
-  "version": "0.2.21",
-  "description": "Model Context Protocol Server for Midnight Blockchain Development",
+  "version": "0.3.0",
+  "description": "[DEPRECATED — migrate to Kapa + Midnight Expert: https://docs.midnight.network/blog/migrating-to-kapa-and-midnight-expert] Model Context Protocol Server for Midnight Blockchain Development",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

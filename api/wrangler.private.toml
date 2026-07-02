@@ -1,0 +1,36 @@
+# PRIVATE deployment = the real search backend (src/index.ts).
+#
+# Deployed under a separate name/URL for the maintainer's own local use after
+# the public URL is switched to the deprecation stub (wrangler.toml). Point the
+# MCP client at it with `MIDNIGHT_API_URL=https://<this-worker-url>`.
+#
+# Deploy:  wrangler deploy -c wrangler.private.toml
+#
+# Before first deploy:
+#   1. Create a FRESH KV namespace so no previously-captured query text carries
+#      over, then put its id below:
+#        wrangler kv namespace create METRICS
+#   2. Set secrets (never commit these):
+#        wrangler secret put OPENAI_API_KEY   -c wrangler.private.toml
+#        wrangler secret put API_AUTH_TOKEN   -c wrangler.private.toml   # optional bearer auth
+#        wrangler secret put DASHBOARD_PASSWORD -c wrangler.private.toml # optional
+#   3. Delete the OLD public KV namespace to clear captured data at rest:
+#        wrangler kv namespace delete --namespace-id adc06e61998c417684ee353791077992
+name = "midnight-mcp-api-private"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+[vars]
+ENVIRONMENT = "production"
+
+# Vectorize index for semantic search (reuse the existing index — re-indexing
+# is expensive; it holds only public repo content, not query text).
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "midnight-code"
+
+# Metrics storage — fresh namespace (NOT the old public one), so no
+# previously-captured query text is carried over.
+[[kv_namespaces]]
+binding = "METRICS"
+id = "50ba310cab694aa6a57fa8d47adecacb"

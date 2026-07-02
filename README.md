@@ -1,5 +1,14 @@
 # Midnight MCP Server
 
+> ## ⚠️ Deprecated — use Kapa + Midnight Expert
+>
+> **midnight-mcp is being wound down.** Midnight has standardised on two official tools:
+>
+> - **Kapa MCP** (docs Q&A / search): `claude mcp add --transport http midnight https://midnight.mcp.kapa.ai`
+> - **Midnight Expert** (hands-on dev, Claude Code plugins): `curl -fsSL https://midnightntwrk.expert/install.sh | bash`
+>
+> **Migration guide → https://docs.midnight.network/blog/migrating-to-kapa-and-midnight-expert**
+
 [![npm version](https://badge.fury.io/js/midnight-mcp.svg)](https://www.npmjs.com/package/midnight-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/midnight-mcp)](https://npm-stat.com/charts.html?package=midnight-mcp)
 [![License](https://img.shields.io/npm/l/midnight-mcp)](./LICENSE)

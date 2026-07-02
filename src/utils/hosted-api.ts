@@ -151,6 +151,11 @@ async function makeRequest<T>(
       headers: {
         "Content-Type": "application/json",
         "User-Agent": "midnight-mcp",
+        // Send bearer auth when the backend requires it (private/self-hosted
+        // deployments that set MIDNIGHT_API_TOKEN).
+        ...(config.hostedApiToken
+          ? { Authorization: `Bearer ${config.hostedApiToken}` }
+          : {}),
         ...options.headers,
       },
     });

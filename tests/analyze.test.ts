@@ -136,12 +136,21 @@ describe("Compile Contract", () => {
   const mockFetch = vi.fn();
   const originalFetch = globalThis.fetch;
 
+  const prevCompilerUrl = process.env.COMPACT_COMPILER_URL;
+
   beforeAll(() => {
     globalThis.fetch = mockFetch;
+    // Compiler is opt-in; configure an endpoint so the service path is tested.
+    process.env.COMPACT_COMPILER_URL = "https://compiler.test.local";
   });
 
   afterAll(() => {
     globalThis.fetch = originalFetch;
+    if (prevCompilerUrl === undefined) {
+      delete process.env.COMPACT_COMPILER_URL;
+    } else {
+      process.env.COMPACT_COMPILER_URL = prevCompilerUrl;
+    }
   });
 
   beforeEach(() => {
@@ -307,6 +316,35 @@ export circuit getValue(): Field {
     expect(result.error).toBe("INVALID_INPUT");
   });
 
+  it("does not send source off-box when no compiler is configured", async () => {
+    const saved = process.env.COMPACT_COMPILER_URL;
+    delete process.env.COMPACT_COMPILER_URL;
+    mockFetch.mockClear();
+
+    try {
+      const result = (await compileContract({
+        code: `
+ledger {
+  counter: Counter;
+}
+
+export circuit increment(): Void {
+  ledger.counter.increment(1);
+}
+        `,
+      })) as Record<string, unknown>;
+
+      // No network call is made, so contract source never leaves the machine.
+      expect(mockFetch).not.toHaveBeenCalled();
+      // Falls back to local static analysis instead of erroring.
+      expect(result.success).toBe(true);
+      expect(result.validationType).toBe("static-analysis-fallback");
+      expect(result.serviceAvailable).toBe(false);
+    } finally {
+      process.env.COMPACT_COMPILER_URL = saved;
+    }
+  });
+
   it("should validate input - reject oversized code", async () => {
     const result = (await compileContract({
       code: "x".repeat(200 * 1024), // 200KB
@@ -321,12 +359,21 @@ describe("Compiler Status", () => {
   const mockFetch = vi.fn();
   const originalFetch = globalThis.fetch;
 
+  const prevCompilerUrl = process.env.COMPACT_COMPILER_URL;
+
   beforeAll(() => {
     globalThis.fetch = mockFetch;
+    // Compiler is opt-in; configure an endpoint so the service path is tested.
+    process.env.COMPACT_COMPILER_URL = "https://compiler.test.local";
   });
 
   afterAll(() => {
     globalThis.fetch = originalFetch;
+    if (prevCompilerUrl === undefined) {
+      delete process.env.COMPACT_COMPILER_URL;
+    } else {
+      process.env.COMPACT_COMPILER_URL = prevCompilerUrl;
+    }
   });
 
   beforeEach(() => {
