@@ -29,8 +29,8 @@ ENVIRONMENT = "production"
 binding = "VECTORIZE"
 index_name = "midnight-code"
 
-# Metrics storage — use a FRESH namespace id (see step 1 above), NOT the old
-# public one, so no previously-captured query text is carried over.
+# Metrics storage — fresh namespace (NOT the old public one), so no
+# previously-captured query text is carried over.
 [[kv_namespaces]]
 binding = "METRICS"
-id = "REPLACE_WITH_FRESH_KV_NAMESPACE_ID"
+id = "50ba310cab694aa6a57fa8d47adecacb"
