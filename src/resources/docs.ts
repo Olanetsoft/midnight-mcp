@@ -63,7 +63,7 @@ export const documentationResources: ResourceDefinition[] = [
     uri: "midnight://docs/wallet-integration",
     name: "Wallet Integration Guide",
     description:
-      "DApp Connector API for Midnight Lace wallet - React hooks, TypeScript types",
+      "DApp Connector API v4 for Midnight wallets - wallet discovery, React hooks, TypeScript types",
     mimeType: "text/markdown",
   },
   {
