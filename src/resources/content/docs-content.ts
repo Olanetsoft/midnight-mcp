@@ -1229,60 +1229,97 @@ Where:
 
   "midnight://docs/wallet-integration": `# Midnight Wallet Integration Guide
 
-A guide for integrating Midnight Lace wallet into your DApp.
+A guide for connecting a DApp to Midnight wallets (Lace or any other wallet that
+implements the DApp Connector API v4).
 
-## Browser Detection
+**Source:** [@midnight-ntwrk/dapp-connector-api](https://github.com/midnightntwrk/midnight-dapp-connector-api) v4,
+[React wallet connect guide](https://docs.midnight.network/guides/react-wallet-connect)
+
+## Wallet Discovery
+
+Every installed wallet injects an \`InitialAPI\` object under \`window.midnight\`.
+The key is not a fixed wallet name, so don't hardcode one: enumerate the
+entries and pick a wallet by \`rdns\`/\`name\`, or let the user choose.
 
 \`\`\`typescript
-declare global {
-  interface Window {
-    midnight?: {
-      mnLace?: MidnightProvider;
-    };
-  }
+import type { InitialAPI } from '@midnight-ntwrk/dapp-connector-api';
+// Importing the package also types window.midnight as { [key: string]: InitialAPI }
+
+function listWallets(): InitialAPI[] {
+  if (typeof window === 'undefined' || !window.midnight) return [];
+  // Keep only wallets that implement the v4 API (legacy wallets have no connect())
+  return Object.values(window.midnight).filter(
+    (wallet) =>
+      typeof wallet?.connect === 'function' &&
+      wallet.apiVersion?.startsWith('4.'),
+  );
 }
 
 function isWalletAvailable(): boolean {
-  return typeof window !== 'undefined' 
-    && window.midnight?.mnLace !== undefined;
+  return listWallets().length > 0;
 }
 \`\`\`
 
 ## DApp Connector API
 
 \`\`\`typescript
-interface DAppConnectorAPI {
-  enable(): Promise<MidnightAPI>;
-  isEnabled(): Promise<boolean>;
-  apiVersion(): string;
-  name(): string;
-  icon(): string;
+// InitialAPI, injected by each wallet
+type InitialAPI = {
+  rdns: string;        // reverse DNS id, stable across wallet versions
+  name: string;        // display name
+  icon: string;        // URL or data URL
+  apiVersion: string;  // semver, e.g. '4.0.0'
+  connect: (networkId: string) => Promise<ConnectedAPI>;
+};
+
+async function connectWallet(
+  wallet: InitialAPI,
+  networkId = 'preprod', // 'mainnet' | 'preprod' | 'preview' | 'undeployed'
+): Promise<ConnectedAPI> {
+  return await wallet.connect(networkId);
 }
 
-async function connectWallet(): Promise<MidnightAPI> {
-  if (!window.midnight?.mnLace) {
-    throw new Error('Midnight Lace wallet not found');
-  }
-  return await window.midnight.mnLace.enable();
-}
+// Example: show listWallets() in a picker, or select one by rdns
+const wallets = listWallets();
+const wallet = wallets.find((w) => w.rdns === savedRdns) ?? wallets[0];
+if (!wallet) throw new Error('No Midnight wallet found');
+const api = await connectWallet(wallet);
 \`\`\`
 
-## MidnightAPI Interface
+## ConnectedAPI Interface
 
 \`\`\`typescript
-interface MidnightAPI {
-  getUsedAddresses(): Promise<string[]>;
-  getBalance(): Promise<Balance>;
-  signTx(tx: Transaction): Promise<SignedTransaction>;
-  submitTx(signedTx: SignedTransaction): Promise<TxHash>;
-  signData(address: string, payload: string): Promise<Signature>;
+interface ConnectedAPI {
+  getConfiguration(): Promise<Configuration>; // indexerUri, indexerWsUri, proverServerUri, substrateNodeUri, networkId
+  getConnectionStatus(): Promise<ConnectionStatus>;
+  getShieldedAddresses(): Promise<{
+    shieldedAddress: string;
+    shieldedCoinPublicKey: string;
+    shieldedEncryptionPublicKey: string;
+  }>;
+  getUnshieldedAddress(): Promise<{ unshieldedAddress: string }>;
+  getDustAddress(): Promise<{ dustAddress: string }>;
+  getShieldedBalances(): Promise<Record<TokenType, bigint>>;
+  getUnshieldedBalances(): Promise<Record<TokenType, bigint>>;
+  getDustBalance(): Promise<{ cap: bigint; balance: bigint }>;
+  makeTransfer(outputs: DesiredOutput[], options?: { payFees?: boolean }): Promise<{ tx: string }>;
+  balanceUnsealedTransaction(tx: string, options?: { payFees?: boolean }): Promise<{ tx: string }>;
+  balanceSealedTransaction(tx: string, options?: { payFees?: boolean }): Promise<{ tx: string }>;
+  submitTransaction(tx: string): Promise<void>;
+  signData(data: string, options: SignDataOptions): Promise<Signature>;
+  getProvingProvider(keyMaterialProvider: KeyMaterialProvider): Promise<ProvingProvider>;
+  // Also: getTxHistory(), makeIntent(), hintUsage()
 }
 \`\`\`
+
+Transactions are passed as hex-encoded strings.
 
 ## React Hook
 
 \`\`\`typescript
-export function useWallet() {
+import type { ConnectedAPI, InitialAPI } from '@midnight-ntwrk/dapp-connector-api';
+
+export function useWallet(networkId = 'preprod') {
   const [state, setState] = useState({
     isConnected: false,
     address: null as string | null,
@@ -1290,17 +1327,14 @@ export function useWallet() {
     error: null as string | null,
   });
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (wallet: InitialAPI): Promise<ConnectedAPI> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      if (!window.midnight?.mnLace) {
-        throw new Error('Please install Midnight Lace wallet');
-      }
-      const api = await window.midnight.mnLace.enable();
-      const addresses = await api.getUsedAddresses();
+      const api = await wallet.connect(networkId);
+      const { unshieldedAddress } = await api.getUnshieldedAddress();
       setState({
         isConnected: true,
-        address: addresses[0] || null,
+        address: unshieldedAddress,
         isLoading: false,
         error: null,
       });
@@ -1313,29 +1347,32 @@ export function useWallet() {
       }));
       throw error;
     }
-  }, []);
+  }, [networkId]);
 
-  return { ...state, connect };
+  // Render listWallets() as buttons (wallet.icon + wallet.name) and call connect(wallet)
+  return { ...state, wallets: listWallets(), connect };
 }
 \`\`\`
 
 ## Connection Flow
 
 \`\`\`
-1. User clicks "Connect Wallet"
-2. DApp calls window.midnight.mnLace.enable()
-3. Wallet popup asks user to approve
-4. User approves → DApp receives MidnightAPI
-5. DApp can now interact with wallet
+1. DApp lists the wallets found in window.midnight (filtered by apiVersion)
+2. User picks a wallet (or the DApp selects one by rdns)
+3. DApp calls wallet.connect(networkId)
+4. Wallet popup asks user to approve
+5. User approves → DApp receives a ConnectedAPI
+6. DApp can now interact with wallet
 \`\`\`
 
 ## Best Practices
 
-1. Always check wallet availability first
-2. Handle user rejection gracefully
-3. Store connection state in context
-4. Provide clear loading/error feedback
-5. Test with Midnight Lace extension
+1. Enumerate window.midnight instead of hardcoding a wallet key
+2. Check apiVersion before calling connect()
+3. Handle user rejection gracefully
+4. Store connection state (and the chosen wallet's rdns) in context
+5. Provide clear loading/error feedback
+6. Test with more than one wallet extension installed
 `,
 
   // Common Errors Reference - VERIFIED from official Midnight documentation
@@ -1444,13 +1481,16 @@ Internal function for type errors with parameters: who, what, where, type, value
 import { ErrorCodes } from '@midnight-ntwrk/dapp-connector-api';
 
 // ErrorCodes.Rejected - User rejected the request
+// ErrorCodes.PermissionRejected - Permission to perform the action was rejected
 // ErrorCodes.InvalidRequest - Malformed transaction or request
 // ErrorCodes.InternalError - DApp connector couldn't process request
+// ErrorCodes.Disconnected - The connection to the wallet was lost
 
 try {
-  const api = await window.midnight.mnLace.enable();
+  // wallet: an InitialAPI picked from window.midnight (see wallet-integration)
+  const api = await wallet.connect('preprod');
 } catch (error) {
-  if (error.code === ErrorCodes.Rejected) {
+  if (error.type === 'DAppConnectorAPIError' && error.code === ErrorCodes.Rejected) {
     console.log('User rejected wallet connection');
   }
 }
